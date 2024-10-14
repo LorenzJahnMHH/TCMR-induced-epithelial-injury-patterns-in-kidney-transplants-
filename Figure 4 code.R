@@ -1,9 +1,9 @@
 setwd("D:/R_Ordner/Ktx Daten")
 
 #Figure 4A UMAP
-Ktx_Leuko <- readRDS("D:/R_Ordner/KTx Daten/Ktx_Leukos_mouse_subclustering_harmony.rds")
+Ktx_Leuko_mouse_subclustering <- readRDS("D:/R_Ordner/KTx Daten/Ktx_Leukos_mouse_subclustering_harmony.rds")
 
-DimPlot(Ktx_Leuko, group.by = 'celltype_level_2', label = F, 
+DimPlot(Ktx_Leuko_mouse_subclustering, group.by = 'celltype_level_2', label = F, 
         cols = c('Cd4+ T cells' = 'grey40', 
                  'Cd8+ T cells' = 'black',
                  'Cd8+ T cells_2_prolif' = 'grey90',
@@ -39,15 +39,15 @@ rownames(cpm_matrix) <- gene_order
 colnames(cpm_matrix) <- celltype_order
 
 for (ct in celltype_order) {
-  cells.tmp <- rownames(Ktx_Leuko@meta.data[
-    Ktx_Leuko$celltype_level_2 == ct, 
+  cells.tmp <- rownames(Ktx_Leuko_mouse_subclustering@meta.data[
+    Ktx_Leuko_mouse_subclustering$celltype_level_2 == ct, 
   ])
   
   if (length(cells.tmp) == 0) {
     next  
   }
   
-  gene_counts <- Ktx_Leuko@assays$RNA@counts[gene_order, cells.tmp, drop = FALSE]
+  gene_counts <- Ktx_Leuko_mouse_subclustering@assays$RNA@counts[gene_order, cells.tmp, drop = FALSE]
   gene_counts <- as.matrix(gene_counts)
   
   total_counts <- colSums(gene_counts)
@@ -92,7 +92,7 @@ total_cells_by_sample <- Ktx_data@meta.data %>%
   group_by(ID_to_plot) %>%
   summarise(total_cells = n(), .groups = 'drop')
 
-df_leukos <- Ktx_Leuko@meta.data %>%
+df_leukos <- Ktx_Leuko_mouse_subclustering@meta.data %>%
   group_by(ID_to_plot, celltype_level_2) %>%
   summarise(count = n(), .groups = 'drop') %>%
   left_join(total_cells_by_sample, by = "ID_to_plot") %>% 
@@ -157,7 +157,7 @@ total_cells_by_sample <- Ktx_data@meta.data %>%
   group_by(ID_to_plot) %>%
   summarise(total_cells = n(), .groups = 'drop')
 
-df_leukos <- Ktx_Leuko@meta.data %>%
+df_leukos <- Ktx_Leuko_mouse_subclustering@meta.data %>%
   group_by(ID_to_plot, celltype_level_2) %>%
   summarise(count = n(), .groups = 'drop') %>%
   left_join(total_cells_by_sample, by = "ID_to_plot") %>%
@@ -219,13 +219,13 @@ total_cells_by_sample <- Ktx_data@meta.data %>%
   group_by(ID_to_plot) %>%
   summarise(total_cells = n(), .groups = 'drop')
 
-df_leukos <- Ktx_Leuko@meta.data %>%
+df_leukos <- Ktx_Leuko_mouse_subclustering@meta.data %>%
   group_by(ID_to_plot, celltype_level_2) %>%
   summarise(count = n(), .groups = 'drop') %>%
   left_join(total_cells_by_sample, by = "ID_to_plot") %>%
   mutate(percent = count / total_cells) %>%
   ungroup() %>%
-  mutate(group = Ktx_Leuko$group[match(ID_to_plot, Ktx_Leuko$ID_to_plot)])
+  mutate(group = Ktx_Leuko_mouse_subclustering$group[match(ID_to_plot, Ktx_Leuko_mouse_subclustering$ID_to_plot)])
 
 unique_samples <- df_leukos %>%
   distinct(ID_to_plot, group)
