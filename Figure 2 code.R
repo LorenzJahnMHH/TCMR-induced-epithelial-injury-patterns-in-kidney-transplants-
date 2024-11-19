@@ -13,7 +13,6 @@ setwd("D:/R_Ordner/Ktx Daten/Blck6_Balbc_DGE_lists")
 
 cell_types <- c("Podo", "PT", "tL", "TAL", "DCT", "CNT", "CD-PC", "CD-IC-A", "CD-IC-B", "EC", "IntC", "Uro", "PEC", "Leuko")
 
-
 Balbc_Allo_marker <- list()
 Balbc_up_Allo_vs_Syn <- list()
 Balbc_down_Allo_vs_Syn <- list()
@@ -33,19 +32,19 @@ for (cell_type in cell_types) {
   
 
   Balbc_up_Allo_vs_Syn[[cell_type]] <- Balbc_Allo_marker[[cell_type]] %>%
-    filter(p_val_adj < 0.05, avg_log2FC > 1, pct.1 > 0.25)
+    filter(p_val_adj < 0.05, avg_log2FC > 1, pct.1 > 0.1)
   
 
   Balbc_down_Allo_vs_Syn[[cell_type]] <- Balbc_Allo_marker[[cell_type]] %>%
-    filter(p_val_adj < 0.05, avg_log2FC < -1, pct.2 > 0.25)
+    filter(p_val_adj < 0.05, avg_log2FC < -1, pct.2 > 0.1)
   
   Blck6_Allo_marker[[cell_type]] <- FindMarkers(ktx_cells, ident.1 = 'Blck6_Balbc_alo', ident.2 = 'Blck6_Blck6_syn', logfc.threshold = 1)
   
   Blck6_up_Allo_vs_Syn[[cell_type]] <- Blck6_Allo_marker[[cell_type]] %>%
-    filter(p_val_adj < 0.05, avg_log2FC > 1, pct.1 > 0.25)
+    filter(p_val_adj < 0.05, avg_log2FC > 1, pct.1 > 0.1)
   
   Blck6_down_Allo_vs_Syn[[cell_type]] <- Blck6_Allo_marker[[cell_type]] %>%
-    filter(p_val_adj < 0.05, avg_log2FC < -1, pct.2 > 0.25)
+    filter(p_val_adj < 0.05, avg_log2FC < -1, pct.2 > 0.1)
   
   rm(ktx_cells)
   gc()
@@ -97,7 +96,7 @@ save_to_excel(Blck6_up_Allo_vs_Syn, "Blck6_up_Allo_vs_Syn.xlsx")
 save_to_excel(Blck6_down_Allo_vs_Syn, "Blck6_down_Allo_vs_Syn.xlsx")
 
 
-# Figure 2 A
+# Figure 2A
 Balbc_up_Allo_vs_Syn <- readRDS("Balbc_up_Allo_vs_Syn.rds")
 Balbc_down_Allo_vs_Syn <- readRDS("Balbc_down_Allo_vs_Syn.rds")
 Blck6_up_Allo_vs_Syn <- readRDS("Blck6_up_Allo_vs_Syn.rds")
@@ -168,12 +167,12 @@ ggplot(upregulated_data, aes(x = Cell_Type, y = Count, fill = Strain)) +
   scale_fill_manual(values = c("Blck6" = "skyblue", "Balbc" = "lightgreen")) + 
   theme_minimal() +
   theme(
-    axis.text.x = element_blank(),  # Entferne die x-Achsenbeschriftungen
+    axis.text.x = element_blank(), 
     axis.text.y = element_blank(),
-    axis.title.x = element_blank(),  # Entferne den Titel der x-Achse
-    axis.title.y = element_blank(),  # Entferne den Titel der y-Achse
-    legend.position = "none",        # Entferne die Legende
-    panel.grid.minor = element_blank()  # Entferne Neben-Rasterlinien
+    axis.title.x = element_blank(),  
+    axis.title.y = element_blank(), 
+    legend.position = "none",       
+    panel.grid.minor = element_blank()  
   ) + 
   ylim(0, max(upregulated_data$Count) * 1.1)
 
@@ -182,12 +181,12 @@ ggplot(downregulated_data, aes(x = Cell_Type, y = Count, fill = Strain)) +
   scale_fill_manual(values = c("Blck6" = "skyblue", "Balbc" = "lightgreen")) + 
   theme_minimal() +
   theme(
-    axis.text.x = element_blank(),  # Entferne die x-Achsenbeschriftungen
+    axis.text.x = element_blank(), 
     axis.text.y = element_blank(),
-    axis.title.x = element_blank(),  # Entferne den Titel der x-Achse
-    axis.title.y = element_blank(),  # Entferne den Titel der y-Achse
-    legend.position = "none",        # Entferne die Legende
-    panel.grid.minor = element_blank()  # Entferne Neben-Rasterlinien
+    axis.title.x = element_blank(),  
+    axis.title.y = element_blank(), 
+    legend.position = "none",        
+    panel.grid.minor = element_blank() 
   ) + 
   ylim(0, max(downregulated_data$Count) * 1.1)
 
@@ -358,107 +357,66 @@ library(dplyr)
 library(ggplot2)
 library(reshape2)
 
-read_pathways <- function(file_path) {
-  pathways <- read.delim(file_path, header = TRUE, sep = "\t", skip = 9, fill = TRUE, quote = "", check.names = FALSE)
-  pathways <- pathways %>% dplyr::filter(grepl("^HALLMARK", `Gene Set Name`))
-  pathways <- pathways %>% dplyr::select(`Gene Set Name`, `FDR q-value`)
-  pathways$`FDR q-value` <- as.numeric(pathways$`FDR q-value`)
-  return(pathways)
+balbc_dir <- "D:/R_Ordner/KTx Daten/Pathway_enrichment/Balbc_up_pct_01/"
+blck6_dir <- "D:/R_Ordner/KTx Daten/Pathway_enrichment/Blck6_up_pct_01/"
+
+process_enrichr_file <- function(file_path) {
+  data <- read.delim(file_path, header = TRUE, sep = "\t", fill = TRUE, quote = "", check.names = FALSE)
+  clean_data <- data %>%
+    dplyr::select(Term, `Adjusted P-value`) %>%
+    dplyr::rename(Pathway = Term, AdjustedPValue = `Adjusted P-value`) %>%
+    dplyr::mutate(AdjustedPValue = as.numeric(AdjustedPValue))
+  return(clean_data)
 }
 
-cts <- c("Podo", "PT", "tL", "TAL", "DCT", "CNT", "CD-PC", "CD-IC-A", "CD-IC-B", "EC", "IntC", "Uro", "PEC")
+celltypes <- c("Podo", "PT", "tL", "TAL", "DCT", "CNT", "CD-PC", "CD-IC-A", "CD-IC-B", "EC", "IntC", "Uro", "PEC")
 
-blck6_dir <- "D:/R_Ordner/Ktx Daten/Pathway_enrichment/Blck6_up_pct025//"
-balbc_dir <- "D:/R_Ordner/Ktx Daten/Pathway_enrichment/Balbc_up_pct025/"
-
-all_pathway_data <- data.frame(`Gene Set Name` = character(),
-                               `FDR q-value` = numeric(),
-                               ct = character(),
-                               strain = character(),
+all_pathway_data <- data.frame(Pathway = character(),
+                               AdjustedPValue = numeric(),
+                               CellType = character(),
+                               Strain = character(),
                                stringsAsFactors = FALSE)
 
-col_names <- c("Gene Set Name", "FDR q-value", "ct", "strain")
-
-for (ct in cts) {
-  blck6_file <- paste0(blck6_dir, ct, "_pathways.tsv")
-  balbc_file <- paste0(balbc_dir, ct, "_pathways.tsv")
-  
-  if (file.exists(blck6_file)) {
-    pathway_data_blck6 <- read_pathways(blck6_file)
-    pathway_data_blck6$ct <- ct
-    pathway_data_blck6$strain <- "Blck6"
-    colnames(pathway_data_blck6) <- col_names
-    all_pathway_data <- rbind(all_pathway_data, pathway_data_blck6)
-  }
+for (ct in celltypes) {
+  balbc_file <- paste0(balbc_dir, "Balbc_", ct, "_pathways_raw.txt")
+  blck6_file <- paste0(blck6_dir, "Blck6_", ct, "_pathways_raw.txt")
   
   if (file.exists(balbc_file)) {
-    pathway_data_balbc <- read_pathways(balbc_file)
-    pathway_data_balbc$ct <- ct
-    pathway_data_balbc$strain <- "Balbc"
-    colnames(pathway_data_balbc) <- col_names
-    all_pathway_data <- rbind(all_pathway_data, pathway_data_balbc)
+    balbc_data <- process_enrichr_file(balbc_file)
+    balbc_data$CellType <- ct
+    balbc_data$Strain <- "Balbc"
+    all_pathway_data <- rbind(all_pathway_data, balbc_data)
+  }
+  
+  if (file.exists(blck6_file)) {
+    blck6_data <- process_enrichr_file(blck6_file)
+    blck6_data$CellType <- ct
+    blck6_data$Strain <- "Blck6"
+    all_pathway_data <- rbind(all_pathway_data, blck6_data)
   }
 }
 
-all_pathway_data$`FDR q-value`[all_pathway_data$strain == "Blck6" & 
-                                 all_pathway_data$ct %in% c("Uro", "PEC") & 
-                                 all_pathway_data$`FDR q-value` == 0] <- NA
-
-all_pathway_data <- all_pathway_data %>% arrange(`FDR q-value`)
-unique_pathways_up <- unique(all_pathway_data$`Gene Set Name`)[1:35]
-
 filtered_data <- all_pathway_data %>%
-  dplyr::filter(`Gene Set Name` %in% unique_pathways_up) %>%
-  mutate(log10_fdr = ifelse(is.na(`FDR q-value`), NA, -log10(`FDR q-value`)))
+  dplyr::filter(AdjustedPValue < 0.05) %>%
+  mutate(log10_fdr = -log10(AdjustedPValue))
+
+mat <- dcast(filtered_data, Pathway ~ CellType, value.var = "log10_fdr", fill = 0)
+rownames(mat) <- mat$Pathway
+mat <- mat[ , -1]  
+
+row_dist <- dist(mat, method = "euclidean")  
+row_clustering <- hclust(row_dist, method = "ward.D2")  
+ordered_rows <- rownames(mat)[row_clustering$order]  
+
+filtered_data$Pathway <- factor(filtered_data$Pathway, levels = ordered_rows) 
 
 celltype_order <- c("Podo", "PT", "tL", "TAL", "DCT", "CNT", "CD-PC", "CD-IC-A", "CD-IC-B", "EC", "IntC", "Uro", "PEC")
+filtered_data$CellType <- factor(filtered_data$CellType, levels = celltype_order)
 
-filtered_data$ct <- factor(filtered_data$ct, levels = celltype_order)
-
-for (ct in setdiff(celltype_order, unique(filtered_data$ct))) {
-  empty_rows <- data.frame(`Gene Set Name` = unique_pathways_up, 
-                           `FDR q-value` = NA, 
-                           ct = ct, 
-                           strain = NA, 
-                           log10_fdr = NA)
-  filtered_data <- rbind(filtered_data, empty_rows)
-}
-
-filtered_data$`Gene Set Name` <- gsub("^HALLMARK_", "", filtered_data$`Gene Set Name`)
-filtered_data$`Gene Set Name` <- gsub("_", " ", filtered_data$`Gene Set Name`)
-
-mat <- dcast(filtered_data, `Gene Set Name` ~ ct, value.var = "log10_fdr", fill = 0)
-rownames(mat) <- mat$`Gene Set Name`
-mat <- mat[ , -1]
-mat <- as.matrix(mat)
-
-calculate_proximity <- function(cols) {
-  if (length(cols) <= 1) return(0)
-  sum(abs(diff(cols)))
-}
-
-sort_matrix <- function(mat) {
-  non_zero_counts <- rowSums(mat != 0)
-  df <- data.frame(
-    row_index = seq_len(nrow(mat)),
-    non_zero_count = non_zero_counts,
-    min_col = apply(mat != 0, 1, function(x) min(which(x))),
-    proximity_score = apply(mat != 0, 1, function(x) {
-      cols <- which(x)
-      calculate_proximity(cols)
-    })
-  )
-  sorted_df <- df[order(-df$non_zero_count, df$min_col, df$proximity_score), ]
-  sorted_mat <- mat[sorted_df$row_index, , drop = FALSE]
-  return(sorted_mat)
-}
-
-sorted_mat <- sort_matrix(mat)
-ordered_rows <- rownames(sorted_mat)
-
-S1 <- ggplot(filtered_data, aes(x = strain, 
-                                y = factor(`Gene Set Name`, levels = rev(ordered_rows)), 
-                                size = pmin(log10_fdr, 3), fill = strain)) + 
+dotplot_clustered <- ggplot(filtered_data, aes(x = Strain, 
+                                               y = Pathway, 
+                                               size = pmin(log10_fdr, 3), 
+                                               fill = Strain)) + 
   geom_point(shape = 21) + 
   scale_fill_manual(values = c("Blck6" = "skyblue", "Balbc" = "lightgreen")) +
   scale_size_continuous(range = c(0, 6), breaks = c(0, 1, 2, 3), limits = c(0, 3)) +
@@ -477,6 +435,48 @@ S1 <- ggplot(filtered_data, aes(x = strain,
     panel.grid.major = element_line(color = "grey80"),  
     panel.grid.minor = element_line(color = "grey90")  
   ) +
-  facet_grid(~ct, scales = "free_x", space = "free_x")
+  facet_grid(~CellType, scales = "free_x", space = "free_x")
 
-print(S1)
+print(dotplot_clustered)
+
+
+# top 25 unique pathways
+top_pathways <- filtered_data %>%
+  group_by(Pathway) %>%
+  summarize(min_adj_pval = min(AdjustedPValue, na.rm = TRUE)) %>%
+  arrange(min_adj_pval) %>%
+  slice_head(n = 25) 
+
+filtered_top_data <- filtered_data %>%
+  filter(Pathway %in% top_pathways$Pathway)
+
+filtered_top_data$Pathway <- factor(filtered_top_data$Pathway, levels = rev(top_pathways$Pathway))
+
+celltype_order <- c("Podo", "PT", "tL", "TAL", "DCT", "CNT", "CD-PC", "CD-IC-A", "CD-IC-B", "EC", "IntC", "Uro", "PEC")
+filtered_top_data$CellType <- factor(filtered_top_data$CellType, levels = celltype_order)
+
+dotplot_top_reversed <- ggplot(filtered_top_data, aes(x = Strain, 
+                                                      y = Pathway, 
+                                                      size = pmin(log10_fdr, 3), 
+                                                      fill = Strain)) + 
+  geom_point(shape = 21) + 
+  scale_fill_manual(values = c("Blck6" = "skyblue", "Balbc" = "lightgreen")) +
+  scale_size_continuous(range = c(0, 6), breaks = c(0, 1, 2, 3), limits = c(0, 3)) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_blank(),
+    axis.text.y = element_text(size = 10), 
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    legend.title = element_blank(),
+    legend.text = element_blank(),
+    legend.position = "none",
+    strip.text = element_blank(),
+    panel.spacing.x = unit(2, "lines"),  
+    panel.border = element_blank(),  
+    panel.grid.major = element_line(color = "grey80"),  
+    panel.grid.minor = element_line(color = "grey90")  
+  ) +
+  facet_grid(~CellType, scales = "free_x", space = "free_x")
+
+print(dotplot_top_reversed)
