@@ -1,15 +1,12 @@
 # Figure 1
 
-setwd("D:/R_Ordner/Ktx Daten")
-Ktx_data <- readRDS("Ktx_data.rds")
-
-# necessary file : "Ktx_data.rds"
-
 library(Seurat)
 library(ggplot2)
 library(dplyr)
+library(tidyr)
 
-
+setwd("D:/R_Ordner/Ktx Daten")
+Ktx_data <- readRDS("Ktx_data.rds")
 
 # Figure 1C UMAP
 Idents(Ktx_data) <- "celltype_level_1"
@@ -34,53 +31,39 @@ celltype_order = c("Podo", "PT", "tL", "TAL", "DCT", "CNT", "CD-PC",
                    "CD-IC-A", "CD-IC-B", "EC", "Leuko", "IntC", 
                    "Uro", "PEC", "Prolif")
 
-top50 <- top_markers %>%
-  filter(pct.1 > 0.5) %>%  
+top70 <- top_markers %>%
   group_by(cluster) %>%
-  arrange(p_val_adj) %>%  
-  slice_head(n = 50) %>%  
+  slice_head(n = 70) %>%  
   ungroup()
 
 
-top_genes <- top50$gene
-top_genes_order <- top50 %>% 
+top_genes <- top70$gene
+
+top_genes_order <- top70 %>% 
   mutate(cluster = factor(cluster, levels = rev(celltype_order))) %>%  
   arrange(cluster) %>% 
   pull(gene)
 
 top_genes_order <- rev(top_genes_order)
 
-cpm_matrix <- matrix(0, nrow = length(top_genes_order), ncol = length(celltype_order))
-rownames(cpm_matrix) <- top_genes_order
-colnames(cpm_matrix) <- celltype_order
+avg_expression <- AverageExpression(
+  Ktx_data,
+  features = valid_features,
+  group.by = "celltype_level_1",
+  assays = "RNA"
+)$RNA
 
+avg_expression <- avg_expression[top_genes_order, celltype_order, drop = FALSE]
 
-for (ct in celltype_order) {
-  cells.tmp <- rownames(Ktx_data@meta.data[Ktx_data$celltype_level_1 == ct, ])
-  
-  if (length(cells.tmp) == 0) {
-    next  
-  }
-  
-  gene_counts <- Ktx_data@assays$RNA@counts[top_genes_order, cells.tmp, drop = FALSE]
-  gene_counts <- as.matrix(gene_counts)
-  total_counts <- colSums(gene_counts)
-  total_counts[total_counts == 0] <- 1
-  
-  cpm <- t(t(gene_counts) / total_counts * 1e6)
-  cpm_matrix[, ct] <- rowMeans(cpm, na.rm = TRUE)
-}
+normalized_matrix <- t(apply(avg_expression, 1, function(x) x / max(x, na.rm = TRUE)))
 
+heatmap_df <- as.data.frame(as.table(normalized_matrix))
+colnames(heatmap_df) <- c("Gene", "CellType", "Expression")
 
-cpm_matrix_norm <- t(apply(cpm_matrix, 1, function(x) x / max(x, na.rm = TRUE)))
+heatmap_df$Gene <- factor(heatmap_df$Gene, levels = unique(top_genes_order))
+heatmap_df$CellType <- factor(heatmap_df$CellType, levels = celltype_order)
 
-cpm_df <- as.data.frame(as.table(cpm_matrix_norm))
-colnames(cpm_df) <- c("Gene", "CellType", "CPM")
-
-cpm_df$Gene <- factor(cpm_df$Gene, levels = unique(top_genes_order))
-cpm_df$CellType <- factor(cpm_df$CellType, levels = celltype_order)
-
-p <- ggplot(cpm_df, aes(x = CellType, y = Gene, fill = CPM)) + 
+p1 <- ggplot(heatmap_df, aes(x = CellType, y = Gene, fill = Expression)) + 
   geom_tile(color = NA) +  
   scale_fill_gradient2(low = "black", mid = "black", high = "yellow", 
                        na.value = "black", limits = c(0, 1)) +
@@ -95,10 +78,9 @@ p <- ggplot(cpm_df, aes(x = CellType, y = Gene, fill = CPM)) +
     axis.text.x = element_text(size = 12, angle = 90, hjust = 1)
   )
 
-print(p)
+print(p1)
 
-
-p <- ggplot(cpm_df, aes(x = CellType, y = Gene, fill = CPM)) + 
+p2 <- ggplot(heatmap_df, aes(x = CellType, y = Gene, fill = Expression)) + 
   geom_tile(color = NA) +  
   scale_fill_gradient2(low = "black", mid = "black", high = "yellow", 
                        na.value = "black", limits = c(0, 1)) +
@@ -114,15 +96,11 @@ p <- ggplot(cpm_df, aes(x = CellType, y = Gene, fill = CPM)) +
     legend.position = "none"  
   ) 
 
-print(p)
+print(p2)
 
 
-# Figure 1E Barplot
-library(Seurat)
-library(ggplot2)
-library(dplyr)
-library(tidyr)
 
+# Figure 1F
 df_mouse <- Ktx_data@meta.data %>%
   group_by(ID_to_plot, celltype_level_1) %>%
   summarise(count = n(), .groups = 'drop') %>%
