@@ -48,9 +48,10 @@ top_genes_order <- rev(top_genes_order)
 
 avg_expression <- AverageExpression(
   Ktx_data,
-  features = valid_features,
+  features = top_genes,
   group.by = "celltype_level_1",
-  assays = "RNA"
+  assays = "RNA",
+  slot = "data"
 )$RNA
 
 avg_expression <- avg_expression[top_genes_order, celltype_order, drop = FALSE]
