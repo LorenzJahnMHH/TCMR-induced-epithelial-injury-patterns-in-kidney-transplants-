@@ -479,7 +479,7 @@ pheatmap(
   cluster_cols = TRUE, 
   display_numbers = FALSE, 
   color = colorRampPalette(c("white", "firebrick3"))(length(breaks_TAL) - 1),  # Diverging palette with white at 0
-  breaks = breaks_TAL,  # More granular control
+  breaks = breaks_TAL, 
   legend = TRUE, 
   fontsize = 12,  
   fontsize_row = 12,  
