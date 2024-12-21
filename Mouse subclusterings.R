@@ -80,9 +80,6 @@ Ktx_Leukos_mouse_subclustering <- IntegrateData(anchorset = seurat.anchors)
 
 Ktx_Leuko_mouse_subclustering <- ScaleData(Ktx_Leuko_mouse_subclustering, verbose = FALSE)
 Ktx_Leuko_mouse_subclustering <- RunPCA(Ktx_Leuko_mouse_subclustering, npcs = 30, verbose = FALSE)
-Ktx_Leuko_mouse_subclustering <- FindNeighbors(Ktx_Leuko_mouse_subclustering, reduction = "pca", dims = 1:15)
-Ktx_Leuko_mouse_subclustering <- FindClusters(Ktx_Leuko_mouse_subclustering, resolution = 0.5)
-Ktx_Leuko_mouse_subclustering <- RunUMAP(Ktx_Leuko_mouse_subclustering, reduction = "pca", dims = 1:15)
 
 Ktx_Leuko_mouse_subclustering <- RunHarmony(
   object = Ktx_Leuko_mouse_subclustering, 
@@ -113,4 +110,4 @@ Ktx_Leuko_mouse_subclustering <- FindClusters(
   graph.name = "integrated_snn",  
   resolution = 0.5
 )
-
+# We excluded a doublet with Epithelium markers in the progress 
