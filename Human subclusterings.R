@@ -1,9 +1,7 @@
 library(Seurat)
 library(harmony)
 
-# Clusters with low nCount_RNA and nFeature_RNA were removed from raw data
-# Removal of doublet clusters in subclusterings with at least 2 other major celltype canonical marker
-# Find the included cells with celltype levels in the metadata sheet available on GEO
+# read in h5 files (*raw*_filtered.h5 files) from human samples after cellbender using Seurat's Read10x_h5 creating a Seurat object with min.features = 500 and merge into Human.samples
 
 obj.list <- SplitObject(Human.samples, split.by = "group")
 
@@ -32,6 +30,10 @@ Ktx_data_human <- ScaleData(Ktx_data_human, verbose = FALSE)
 Ktx_data_human <- FindNeighbors(Ktx_data_human, reduction = "harmony", dims = 1:15)
 Ktx_data_human <- FindClusters(Ktx_data_human, resolution = 0.5)
 Ktx_data_human <- RunUMAP(Ktx_data_human, reduction = "harmony", dims = 1:15)
+
+# Clusters with low nCount_RNA and nFeature_RNA were removed from raw data
+# Removal of doublet clusters from subclusterings with at least 2 other major celltype canonical marker
+# Find the included cells with celltype levels in the metadata sheet available on GEO
 
 # PT subclustering human 
 PT_cells <- subset(Ktx_data_human, subset = celltype_level_1 == c("PT"))
