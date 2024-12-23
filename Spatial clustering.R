@@ -101,13 +101,8 @@ table(spat$celltype2)
 cells.tmp = rownames(spat@meta.data[spat@meta.data$celltype2=="non-tub",])
 spat@meta.data[cells.tmp,]$celltype2 = "non-tub_na"
 
-# table(spat$celltype2)
-# write.table(spat@meta.data[,c("celltype2","sample","orig.cellname")], sep="\t", quote = F, 
-#             row.names = T, col.names = NA, file = paste0(wfo,"coi.immune.cells.tsv"))
-# table(spat$celltype2)
-
-#cd-ic, prolif, pec
-tmp = read.table("/Users/chhinze/Dropbox/Projects/dr.arbeit.jahn/analysis/subct.annot/ct.annot.tsv", header = T, 
+# cd-ic, prolif, pec (ct.annot.tsv uses the same approach for non-tub annotation using all level 1 cell types from mouse snRNA-seq and spat.rds to identify the metioned cell types)
+tmp = read.table("ct.annot.tsv", header = T, 
                  sep = "\t")
 pie(table(tmp$spot_class))
 
@@ -119,7 +114,7 @@ table(spat@meta.data[cells.tmp,]$celltype2)
 spat@meta.data[cells.tmp,]$celltype2 = tmp[cells.tmp,]$first_type
 table(spat$celltype2)
 
-#glom-----
+#glom - all celltypes annotated as podocyte in spat.rds are re-annotated using mouse snRNA-seq data from podocytes, EC, PEC and IntC 
 tmp = read.table("/Users/chhinze/Dropbox/Projects/dr.arbeit.jahn/analysis/subct.annot/glom.annot.tsv", 
                  header = T, 
                  sep = "\t")
@@ -137,14 +132,6 @@ table(spat$celltype2)
 cells.tmp = rownames(spat@meta.data[spat@meta.data$celltype2=="Endothelial Cells",])
 spat@meta.data[cells.tmp,]$celltype2 = "EC"
 table(spat$celltype2)
-
-wfo="/Users/chhinze/Dropbox/Projects/dr.arbeit.jahn/analysis/subct.annot/"
-col="celltype2"
-sample="bl6.bl6"
-xenwo(spat, sample, col, paste0(wfo,col,".",sample,".csv"))
-
-
-
 
 spat$celltype3 = as.vector(spat$celltype2)
 #leukocyte sub annotation on HPC cluster
