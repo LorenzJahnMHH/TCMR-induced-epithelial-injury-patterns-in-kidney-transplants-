@@ -1,8 +1,29 @@
 library(Seurat)
 library(harmony)
 
-setwd("D:/R_Ordner/Ktx Daten")
-Ktx_data <- readRDS("Ktx_data.rds") 
+# data read in and clustering for cell type annotation
+# read in data and create Seurat object for each sample using:
+# CreateSeuratObject with nFeature_RNA > 1000 & nFeature_RNA < 7500 & nCount_RNA < 20000 & percent.mt < 5
+# merge all samples in Ktx_data 
+
+Ktx_data <- SplitObject(Ktx_data, split.by = "orig.ident")
+
+Ktx_data <- lapply(X = Ktx_data, FUN = function(x) {
+  x <- NormalizeData(x, normalization.method = "LogNormalize", scale.factor = 10000)
+  x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 2000)
+})
+Ktx_data <- FindIntegrationAnchors(object.list = Ktx_data, dims = 1:30, k.anchor = 5, verbose = TRUE)
+Ktx_data <- IntegrateData(anchorset = Ktx_data, dims = 1:30, verbose = TRUE)
+
+DefaultAssay(Ktx_data) <- "integrated"
+
+Ktx_data <- ScaleData(Ktx_data, verbose = TRUE)
+Ktx_data <- RunPCA(Ktx_data, npcs = 30, verbose = TRUE)
+
+Ktx_data <- RunUMAP(Ktx_data, reduction = "pca", dims = 1:30, verbose = TRUE)
+Ktx_data <- FindNeighbors(Ktx_data, reduction = "pca", dims = 1:30, verbose = TRUE)
+Ktx_data <- FindClusters(Ktx_data, resolution = 0.5, verbose = TRUE)
+# continue with cell type annotation based on marker gene expression
 
 # PT subclustering mouse 
 PT_cells <- subset(Ktx_data, subset = celltype_level_1 == "PT")
