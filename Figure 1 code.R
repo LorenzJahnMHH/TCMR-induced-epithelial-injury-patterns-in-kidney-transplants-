@@ -99,7 +99,32 @@ p2 <- ggplot(heatmap_df, aes(x = CellType, y = Gene, fill = Expression)) +
 
 print(p2)
 
+# Figure 1E
+tmp = readRDS("Ktx_data.rds")
+cells.tmp = rownames(tmp@meta.data[tmp@meta.data$celltype_level_1=="PT",])
+tmp = subset(tmp, cells = cells.tmp)
+Idents(tmp) = "ID_to_plot"
+tmp = FindVariableFeatures(tmp)
+genes.tmp = tmp@assays$RNA@var.features
+tmp2 = AverageExpression(tmp, assay = "RNA", features = genes.tmp)
+tmp2 = tmp2$RNA
+tmp2 = as.matrix(tmp2)
+sort(colnames(tmp2))
+colnames(tmp2) = gsub("Balbc","BALB/c",colnames(tmp2))
+colnames(tmp2) = gsub("Blck6","C57BL/6",colnames(tmp2))
 
+library(factoextra)
+pca <- prcomp(t(tmp2), center = TRUE,scale = TRUE)
+a=summary(pca)
+a
+
+pdf(file = "pca.pdf", 
+    width = 6, height = 5)
+set.seed(0)
+fviz_pca_ind(pca, repel = TRUE,axes=c(1,2),col.ind = "#000000", labelsize=6) +
+  theme(axis.text = element_text(size = 14), text = element_text(size = 18)) +
+  ggtitle("")
+dev.off()
 
 # Figure 1F
 df_mouse <- Ktx_data@meta.data %>%
