@@ -1,4 +1,4 @@
-#Figure 4
+# Figure 4
 library(Seurat)
 library(dplyr)
 library(ggplot2)
@@ -7,7 +7,7 @@ library(pheatmap)
 setwd("D:/R_Ordner/Ktx Daten")
 Ktx_Leuko_mouse_subclustering <- readRDS("D:/R_Ordner/KTx Daten/Ktx_Leukos_mouse_subclustering_harmony.rds")
 
-#Figure 4A UMAP
+# Figure 4A UMAP
 
 DimPlot(Ktx_Leuko_mouse_subclustering, group.by = 'celltype_level_2', label = F, 
         cols = c('Cd4+ T cells' = '#666666', 
@@ -21,7 +21,7 @@ DimPlot(Ktx_Leuko_mouse_subclustering, group.by = 'celltype_level_2', label = F,
                  'B_cells' = '#FFD39B',
                  'DC' = '#EEEE00'))  + NoLegend()
 
-#Figure 4A Heatmap
+# Figure 4A Heatmap
 celltype_order <- c("B_cells", "Cd4+ T cells", "Cd8+ T cells", "Cd8+ T cells_2_prolif", 
                     "DC", "Macro_1", "Macro_2", "Macro_3", "Macro_prolif", "NK")
 
@@ -63,7 +63,7 @@ pheatmap(
 
 
 
-#Figure 4B
+# Figure 4B
 total_cells_by_sample <- Ktx_data@meta.data %>%
   group_by(ID_to_plot) %>%
   summarise(total_cells = n(), .groups = 'drop')
@@ -186,3 +186,147 @@ ggplot(df_leukos, aes(x = celltype_level_2, y = percent, fill = ID_to_plot)) +
             legend.position = "none",         
             panel.grid.minor = element_blank())
 
+# Figure 4D
+
+#spatial proximity calculation-----
+library(RANN)
+library(ggsignif)
+
+sams = c("bl6.bc.3", "bl6.bc.1", "bc.bl6.1", "bl6.bc.2", "bc.bl6.3")
+clusts=c("PT_Injury_m1","PT_Injury_m2","PT_Injury_m3","PT_Injury_m4","TAL_Injury_m1",
+           "TAL_Injury_m2", "TAL_Injury_m3","prolifTAL","prolifPT","random")
+
+ctois = c("Cd8+ T cells","Cd4+ T cells","Myeloid","NK","B_cells")
+
+mat = as.data.frame(matrix(-1,ncol=4, nrow=length(sams)*length(clusts)*length(ctois)))
+colnames(mat) = c("sam","inj.clust","leuk.clust","perc.dir.nb")
+mat$sam = rep(sams, each=length(clusts)*length(ctois))
+mat$inj.clust = rep(clusts, length(sams)*length(ctois))
+mat$leuk.clust = rep(rep(ctois, each=length(clusts)),length(sams)) 
+rownames(mat) = paste(mat$sam,mat$inj.clust,mat$leuk.clust,sep = "_")
+mat.list = list()
+
+wfo = "/my_dir/"
+set.seed(0)
+radius = 25
+for(sam in sams){
+  print(sam)
+  mat.list[[sam]] = list()
+  
+  tmp = as.data.frame(read.table(paste0(wfo,sam,".cells.csv"), 
+                                 sep = ",")) # output from xenium ranger
+  colnames(tmp) = tmp[1,]
+  tmp = tmp[-1,]
+  rownames(tmp) = tmp$cell_id
+  cells.tmp = intersect(rownames(tmp), spat@meta.data$orig.cellname)
+  tmp = tmp[cells.tmp,]
+  
+  #transferring celltype labels to tmp
+  cells.tmp = rownames(spat@meta.data[spat@meta.data$sample==sam,])
+  tmp2 = as.data.frame(spat@meta.data[cells.tmp,c("celltype2","orig.cellname")])
+  cells.tmp = spat@meta.data[cells.tmp,]$orig.cellname
+  cells.tmp = intersect(cells.tmp, rownames(tmp))
+  tmp2 = tmp2[tmp2$orig.cellname %in% cells.tmp,]
+  tmp2$cellname = rownames(tmp2)
+  rownames(tmp2) = tmp2$orig.cellname
+  
+  tmp = tmp[cells.tmp,]
+  tmp$ct = tmp2[rownames(tmp),"celltype2"]
+  tmp$x_centroid = as.numeric(tmp$x_centroid)
+  tmp$y_centroid = as.numeric(tmp$y_centroid)
+  #choose random cells
+  cells.tmp = sample(rownames(tmp[!(tmp$ct %in% ctois), ]),1000, replace=F)
+  tmp[cells.tmp,]$ct = "random"
+  rm(tmp2)
+  #gc()
+  
+  for(ctoi in ctois){
+    #print(ctoi)
+    tmp[[ctoi]] = -1
+    cells.tmp = rownames(tmp[tmp$ct==ctoi,])  
+    tmp3 = tmp[cells.tmp,c("x_centroid","y_centroid")]
+    tmp3 = as.matrix(tmp3)
+    
+    cells.tmp = rownames(tmp[tmp$ct %in% clusts,])
+    tmp4 = tmp[cells.tmp,c("x_centroid","y_centroid")]
+    tmp4 = as.matrix(tmp4)
+    
+    nn_result <- nn2(data = tmp3, query = tmp4, k = 1)
+    
+    # Minimum distances
+    min_distances <- nn_result$nn.dists
+    
+    tmp[cells.tmp,ctoi] = min_distances
+    
+    for(clust in clusts){
+      tmp3 = tmp[tmp$ct==clust,][[ctoi]]
+      mat[paste(sam,clust,ctoi,sep = "_"),"perc.dir.nb"] = length(tmp3[tmp3<radius])/length(tmp3)
+    }
+  }
+  mat.list[[sam]] = tmp 
+}
+
+#renaming
+clusts.transl=c("PT_Injury_m1"="PT Injury m1","PT_Injury_m2"="PT Injury m2",
+                "PT_Injury_m3"="PT Injury m3","PT_Injury_m4"="PT Injury m4",
+                "TAL_Injury_m1"="TAL Injury m1","TAL_Injury_m2"="TAL Injury m2", 
+                "TAL_Injury_m3"="TAL Injury m3","prolifTAL"="TAL Prolif",
+                "prolifPT"="PT Prolif","random"="random cells")
+ctois = c("Cd8+ T cells","Cd4+ T cells","Myeloid","NK","B_cells")
+mat$inj.clust = as.vector(clusts.transl[mat$inj.clust])
+
+clusts=c("PT Prolif","PT Injury m1","PT Injury m2","PT Injury m3","PT Injury m4","TAL Prolif",
+         "TAL Injury m1","TAL Injury m2","TAL Injury m3","random cells")
+mat$inj.clust = factor(mat3$inj.clust, levels = clusts)
+
+plot.list = list()
+for(ctoi in ctois){
+  mat3 = mat[mat$leuk.clust==ctoi & mat$inj.clust %in% clusts,]
+  mat3$perc.dir.nb = as.numeric(mat3$perc.dir.nb)*100
+  
+  # Ensure there are no unused levels in the 'sam' variable
+  
+  # Plot
+  plot.list[[ctoi]] = ggplot(mat3, aes(x = inj.clust, y = perc.dir.nb)) + 
+    geom_boxplot(fill = NA, outlier.shape = NA) + 
+    geom_jitter(aes(shape = sam), color = "black", fill = "black", size = 1.2, alpha = 0.9) + 
+    scale_shape_manual(values = c("bc.bl6.1" = 24, "bc.bl6.3" = 24, "bl6.bc.1" = 25, "bl6.bc.2" = 25, "bl6.bc.3" = 25, "bc.bc" = 16, "bl6.bl6" = 15)) + 
+    theme(
+      legend.position = "none",
+      plot.title = element_text(size = 11),
+      axis.text.x = element_text(angle = 45, hjust = 1, face="bold"),
+      axis.title.y = element_text(size = 9),
+      panel.background = element_blank(),  # Remove background color
+      plot.background = element_blank()
+    ) + 
+    ggtitle("") + 
+    xlab("") + 
+    ylab("% cells with direct neighbour") +
+    expand_limits(y = 0) +
+    ggtitle(ctoi)
+  
+}
+
+library(gridExtra)
+
+#plot 1
+ctois = c("Cd8+ T cells","Cd4+ T cells","Myeloid")
+a4_width <- 8.27
+a4_height <- 11.69 / 5  
+plot.list <- lapply(seq_along(plot.list), function(i) {
+  if (i == 1) {
+    # Keep the y-axis label and decrease its font size for the leftmost plot
+    plot.list[[i]] + theme(axis.title.y = element_text(size = 8))
+  } else {
+    # Remove the y-axis label for other plots
+    plot.list[[i]] + theme(axis.title.y = element_blank())
+  }
+})
+pdf("/Users/chhinze/Dropbox/Projects/dr.arbeit.jahn/paper.spatial/figures/spat.dist.leuk.1.pdf", width = a4_width, height = a4_height)
+grid.arrange(grobs = plot.list, ncol = length(plot.list))
+dev.off()
+
+
+
+
+                               
