@@ -1,4 +1,4 @@
-# Figure 5
+# Figure 6
 
 library(Seurat)
 library(dplyr)
@@ -7,8 +7,8 @@ library(pheatmap)
 library(tidyr)
 library(biomaRt)
 
-# Figure 5A UMAP
-Ktx_data_human <- readRDS("Ktx_human_int_harmony.rds")
+# Figure 6A UMAP
+Ktx_data_human <- readRDS(".../Ktx_data_human.rds")
 
 Idents(Ktx_data_human) <- "celltype_level_1"
 DimPlot(Ktx_data_human, label = F, cols = c('PT' = 'coral1', 'tL' = 'brown4', 'TAL' = 'darkblue', 'PEC' = 'antiquewhite', 
@@ -17,7 +17,7 @@ DimPlot(Ktx_data_human, label = F, cols = c('PT' = 'coral1', 'tL' = 'brown4', 'T
                                                    'CNT' = 'olivedrab', 'DCT' = 'darkkhaki', 'Uro' = 'goldenrod1', 
                                                    'CD-IC' = 'ivory3', 'Myo' = 'ivory4'))    + NoLegend()
 
-# Figure 5A Heatmap
+# Figure 6A Heatmap
 Idents(Ktx_data_human) <- "celltype_level_1"
 
 top_markers <- FindAllMarkers(
@@ -81,7 +81,7 @@ p <- ggplot(heatmap_df, aes(x = CellType, y = Gene, fill = Expression)) +
 print(p)
 
 
-#Figure 5B
+#Figure 6B
 df_human <- Ktx_data_human@meta.data %>%
   group_by(sample, celltype_level_1) %>%
   summarise(count = n(), .groups = 'drop') %>%
@@ -137,11 +137,11 @@ print(p2)
 
 
 
-# Figure 5C UMAP
-PT_human_KTX_subclustering <- readRDS("PT_human_KTX_subclustering.rds")
-TAL_human_KTX_subclustering <- readRDS("TAL_human_KTX_subclustering.rds")
+# Figure 6C UMAP
+Ktx_PT_human_subclustering <- readRDS(".../Ktx_PT_human_subclustering.rds")
+Ktx_TAL_human_subclustering <- readRDS(".../Ktx_TAL_human_subclustering.rds")
 
-DimPlot(PT_human_KTX_subclustering, group.by = 'celltype_level_2', label = F, 
+DimPlot(Ktx_PT_human_subclustering, group.by = 'celltype_level_2', label = F, 
         cols = c('PT_S1' = 'coral3',
                  'PT_S2' = 'firebrick',  
                  'PT_S3' = 'coral4', 
@@ -153,28 +153,44 @@ DimPlot(PT_human_KTX_subclustering, group.by = 'celltype_level_2', label = F,
 #Figure 5C Heatmap
 desired_order <- c("PT S1", "PT S1/2", "PT S2",  "PT S3", "PT S3 med.", "PT Injury h1", "PT Injury h2")
 
-gene_order <- rev(c("SLC5A2", "SLC7A7", "SLC22A8", "SLC34A1", "SLC7A13", "SLC22A24", "SLC22A7", "SLC25A47",
-                    "UQCRQ", "ATP5F1E", "FTL", "FTH1", "SERPINA1",  
-                   "RPL5", "RPL30", "SPARC", "HLA-A", "IFITM2", "KLF6", "VIM", "CD44", "VCAM1"))
+gene_order <- rev(c("SLC5A2", "SLC7A7", "SLC4A4", "SLC34A1", "SLC22A6", "LRP2", "SLC7A13", "EGF",
+                    "ACAA2", "DDT", "GHITM", "ETFB", "PHYH", "SLC1A5", "GABARAPL1", "PNP", "PGK1", "TXN", "FTL", "PRNP",
+                    "ACSM3", "STK39", "MAP3K1", "KCNH1", "C3", "SPARC", "KLF7", "CCL2", "IFIT2", "RELB", "KLF6", "S100A10", "PTPRE", "ICAM1", "NFKBIA", "CD47",
+                    "PARP14", "RHOB", "BIRC3", "TPM1", "TNFAIP3", "ITGB1", "VIM", "ATF3", "NFKB1", "CXCL10", "ANXA3", "VCAM1", "HAVCR1", "CD44"))
+
+# manually annotate mouse markers to human heatmap
+pt_m4 <- c("CCL2", "IFIT2", "RELB", "KLF6", "S100A10", "PTPRE", "ICAM1", "NFKBIA", "CD47",
+           "PARP14", "RHOB", "BIRC3", "TPM1", "TNFAIP3", "ITGB1", "VIM", "ATF3", "NFKB1", "CXCL10", 
+           "ANXA3", "VCAM1", "HAVCR1", "CD44")
+pt_m3 <- c("C3", "SPARC", "KLF7")
+pt_m2 <- c("MAP3K1", "KCNH1")
+pt_m1 <- c("ACSM3", "STK39")
 
 avg_exp <- AverageExpression(
-  PT_human_KTX_subclustering, 
+  Ktx_PT_human_subclustering, 
   features = gene_order, 
   group.by = "celltype_to_plot", 
   assays = "RNA", 
-  slot = "data"  
+  slot = "data"
 )
 
 avg_exp_matrix <- avg_exp$RNA[gene_order, desired_order]
-
 avg_exp_matrix_norm <- t(apply(avg_exp_matrix, 1, function(x) x / max(x, na.rm = TRUE)))
 
+row_labels_pt <- sapply(rownames(avg_exp_matrix_norm), function(g) {
+  if (g %in% pt_m4) return(paste0(g, " (m4)"))
+  if (g %in% pt_m3) return(paste0(g, " (m3)"))
+  if (g %in% pt_m2) return(paste0(g, " (m2)"))
+  if (g %in% pt_m1) return(paste0(g, " (m1)"))
+  return(g)
+})
 pheatmap(
   avg_exp_matrix_norm,
   cluster_rows = FALSE,
   cluster_cols = FALSE,
-  show_rownames = TRUE,
+  labels_row = row_labels_pt,
   show_colnames = TRUE,
+  show_rownames = TRUE,
   scale = "none",
   breaks = seq(0, 1, length.out = 101),
   color = colorRampPalette(c("black", "yellow"))(100),
@@ -182,8 +198,22 @@ pheatmap(
   legend = FALSE
 )
 
-#Figure 5D
-df_human <- PT_human_KTX_subclustering@meta.data %>%
+                               pheatmap(
+  avg_exp_matrix_norm,
+  cluster_rows = FALSE,
+  cluster_cols = FALSE,
+  show_rownames = TRUE,
+  show_colnames = TRUE,
+  scale = "none", 
+  main = "Marker Genes in PT Human Subclusters (Avg. Expression)",
+  breaks = seq(0, 1, length.out = 101),
+  color = colorRampPalette(c("black", "yellow"))(100),
+  border_color = NA
+)
+
+                        
+#Figure 6D
+df_human <- Ktx_PT_human_subclustering@meta.data %>%
   group_by(sample, celltype_level_2) %>%
   summarise(count = n(), .groups = 'drop') %>%
   ungroup() %>%
@@ -238,85 +268,108 @@ ggplot(df_human_long, aes(x = celltype_level_2, y = value, fill = sample)) +
     legend.position = "none"         
   )
 
+# Statistical testing with Benjamini Hochberg correction 
+  total_cells_by_sample_human <- Ktx_PT_human_subclustering @meta.data %>%
+  group_by(sample) %>%
+  summarise(total_cells = n(), .groups = 'drop')
 
+df_human <- Ktx_PT_human_subclustering @meta.data %>%
+  group_by(sample, celltype_level_2) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  left_join(total_cells_by_sample_human, by = "sample") %>%
+  mutate(percent = count / total_cells) %>%
+  ungroup() %>%
+  mutate(group = Ktx_PT_human_subclustering $group[match(sample, Ktx_PT_human_subclustering $sample)])
 
-#Figure 5E 
-Idents(PT_human_KTX_subclustering) <- "celltype_to_plot"  
-Idents(Ktx_PT_mouse_subclustering) <- "celltype_to_plot"  
+unique_samples_human <- df_human %>%
+  distinct(sample, group)
 
-PT_mouse_marker <- FindAllMarkers(
-  Ktx_PT_mouse_subclustering, 
-  only.pos = TRUE, 
-  logfc.threshold = 1
+all_combinations_human <- expand.grid(
+  sample = unique_samples_human$sample,
+  celltype_level_2 = unique(df_human$celltype_level_2)
+) %>%
+  left_join(unique_samples_human, by = "sample")
+
+df_human_complete <- all_combinations_human %>%
+  left_join(df_human, by = c("sample", "celltype_level_2", "group")) %>%
+  mutate(
+    count = ifelse(is.na(count), 0, count),
+    total_cells = ifelse(is.na(total_cells), 0, total_cells),
+    percent = ifelse(is.na(percent), 0, percent)
+  )
+
+t_test_results_human <- df_human_complete %>%
+  group_by(celltype_level_2) %>%
+  t_test(percent ~ group) %>%
+  adjust_pvalue(method = "BH") %>%
+  select(celltype_level_2, statistic, df, p, p.adj, group1, group2, n1, n2) %>%
+  ungroup()
+
+print(t_test_results_human)
+
+#Figure 6E 
+Ktx_PT_mouse_subclustering <- readRDS("D:/R_Ordner/KTx Daten/Ktx Objekte final/Maus/Ktx_PT_mouse_subclustering.rds")
+Ktx_PT_human_subclustering <- readRDS("D:/R_Ordner/KTx Daten/Ktx Objekte final/Human/Ktx_PT_human_subclustering.rds")
+
+mouse_mart <- useMart("ensembl", dataset = "mmusculus_gene_ensembl",
+                      host = "https://dec2021.archive.ensembl.org/")
+human_mart <- useMart("ensembl", dataset = "hsapiens_gene_ensembl",
+                      host = "https://dec2021.archive.ensembl.org/")
+
+gene_map <- getLDS(
+  attributes = c("mgi_symbol"),
+  filters = "mgi_symbol",
+  values = rownames(Ktx_PT_mouse_subclustering),
+  mart = mouse_mart,
+  attributesL = c("hgnc_symbol"),
+  martL = human_mart,
+  uniqueRows = TRUE
 )
-PT_mouse_marker <- PT_mouse_marker %>%
-  filter(p_val_adj < 0.05, pct.1 > 0.1)
+gene_map <- gene_map[!duplicated(gene_map[, 2]), ]
+colnames(gene_map) <- c("mouse_gene", "human_gene")
 
-all_PT_genes <- unique(PT_mouse_marker$gene)
+mouse_expr <- GetAssayData(Ktx_PT_mouse_subclustering, slot = "data")
+mouse_expr <- mouse_expr[gene_map$mouse_gene, ]
+rownames(mouse_expr) <- gene_map$human_gene
 
-convertMouseGeneList <- function(x) {
-  human <- useMart("ensembl", dataset = "hsapiens_gene_ensembl", host = "https://dec2021.archive.ensembl.org/") 
-  mouse <- useMart("ensembl", dataset = "mmusculus_gene_ensembl", host = "https://dec2021.archive.ensembl.org/")
-  genesV2 <- getLDS(attributes = c("mgi_symbol"), filters = "mgi_symbol", values = x,
-                    mart = mouse, attributesL = c("hgnc_symbol"), martL = human, uniqueRows = F)
-  return(genesV2)
-}
-
-gene_mapping <- convertMouseGeneList(all_PT_genes)
-
-gene_mapping <- gene_mapping[!duplicated(gene_mapping$MGI.symbol),]
-gene_mapping <- gene_mapping[!duplicated(gene_mapping$HGNC.symbol),]
-
-mouse_genes_to_scale <- gene_mapping$MGI.symbol
-human_genes_to_scale <- gene_mapping$HGNC.symbol
-
-Ktx_PT_mouse_subclustering <- ScaleData(Ktx_PT_mouse_subclustering, features = mouse_genes_to_scale)
-PT_human_KTX_subclustering <- ScaleData(PT_human_KTX_subclustering, features = human_genes_to_scale)
-
-mouse_agg <- AverageExpression(
-  Ktx_PT_mouse_subclustering, 
-  assays = "RNA", 
-  features = mouse_genes_to_scale, 
-  group.by = "celltype_to_plot", 
-  slot = "scale.data"
-)
-
-human_agg <- AverageExpression(
-  PT_human_KTX_subclustering, 
-  assays = "RNA", 
-  features = human_genes_to_scale, 
-  group.by = "celltype_to_plot",  
-  slot = "scale.data"
-)
-
-gene_mapping_filtered <- gene_mapping[gene_mapping$MGI.symbol %in% rownames(mouse_agg[["RNA"]]) & 
-                                        gene_mapping$HGNC.symbol %in% rownames(human_agg[["RNA"]]), ]
-
-mouse_exp <- as.matrix(mouse_agg[["RNA"]][gene_mapping_filtered$MGI.symbol, ])
-human_exp <- as.matrix(human_agg[["RNA"]][gene_mapping_filtered$HGNC.symbol, ])
-
-cor_matrix <- cor(mouse_exp, human_exp, method = "spearman")
+human_expr <- GetAssayData(Ktx_PT_human_subclustering, slot = "data")
+common_genes <- intersect(rownames(mouse_expr), rownames(human_expr))
+mouse_expr <- mouse_expr[common_genes, ]
+human_expr <- human_expr[common_genes, ]
 
 
-breaks = seq(0, 0.5, by = 0.02)
-
-pheatmap(
-  cor_matrix, 
-  cluster_rows = TRUE, 
-  cluster_cols = TRUE, 
-  display_numbers = F, 
-  color = colorRampPalette(c("white", "firebrick3"))(length(breaks) - 1),  
-  breaks = breaks,  
-  legend = TRUE, 
-  fontsize = 12,  
-  fontsize_row = 12,  
-  fontsize_col = 12   
-)
+colnames(human_expr) <- make.unique(colnames(human_expr))
+colnames(Ktx_PT_human_subclustering) <- make.unique(colnames(Ktx_PT_human_subclustering))
 
 
-#Figure 5F UMAP
-Idents(TAL_human_KTX_subclustering ) <- "celltype_level_2"
-DimPlot(TAL_human_KTX_subclustering , group.by = 'celltype_level_2', label = F, 
+ref_labels_human <- Ktx_PT_human_subclustering@meta.data[colnames(human_expr), "celltype_level_2"]
+
+
+singleR_results_PT <- SingleR(test = as.matrix(mouse_expr),
+                              ref = as.matrix(human_expr),
+                              labels = ref_labels_human)
+
+Ktx_PT_mouse_subclustering$SingleR.labels.human <- singleR_results_PT$pruned.labels
+
+confusion_PT <- Ktx_PT_mouse_subclustering@meta.data %>%
+  filter(!is.na(SingleR.labels.human)) %>%
+  count(celltype_level_2_rev, SingleR.labels.human) %>%
+  pivot_wider(names_from = SingleR.labels.human, values_from = n, values_fill = 0) %>%
+  column_to_rownames("celltype_level_2_rev") %>%
+  as.matrix()
+
+prop_PT_inverse <- prop.table(confusion_PT, margin = 2)
+
+pheatmap(prop_PT_inverse,
+         cluster_rows = FALSE, cluster_cols = FALSE,
+         color = colorRampPalette(c("white", "firebrick3"))(100),
+         fontsize_row = 10, fontsize_col = 8, angle_col = 45,
+         main = "Human → Maus Mapping (PT)")
+
+
+#Figure 6F UMAP
+Idents(Ktx_TAL_mouse_subclustering ) <- "celltype_level_2"
+DimPlot(Ktx_TAL_mouse_subclustering , group.by = 'celltype_level_2', label = F, 
         cols = c('cTAL1' = 'royalblue', 
                  'cTAL2' = 'royalblue4',
                  'mTAL1' = 'chartreuse3', 
@@ -327,39 +380,44 @@ DimPlot(TAL_human_KTX_subclustering , group.by = 'celltype_level_2', label = F,
                  'TAL_Injury_h1' = 'mediumpurple1',
                  'TAL_Injury_h2' = 'firebrick3')) + NoLegend()  
 
-#Figure 5F Heatmap
+#Figure 6F Heatmap
 desired_order_tal <- c("cTAL1", "cTAL2", "cTAL3", "cTAL4", "mTAL1", "mTAL2", "mTAL3", "TAL Injury h1", "TAL Injury h2")
 
-gene_order_tal <- rev(c(
-  
-  "CLDN16", "TMEM52B", "KCNJ10",
-  "PHACTR1", "CABP1",
-  "CALCR", "FGL2", "PDE3A",  
-  "RDH8", "PCBP3", "FMN1",
-  "SLC22A2", "SLC25A5", "ATP1A1",
-  "KLF2", "HLA-A", "S100A6", "MET", 
-  "ITGB1", "ERO1A", "SLC2A1",  "TPM1", "SPP1", "ADAMTS1", "NFKBIZ", "CD44"
-  
-))
+gene_order_tal <- rev(c("TMEM52B", "CLDN16",  "KCNJ10", "TENM4", "HCRTR2",  "CABP1", "CALCR", "NR2E3", "PAG1" , "LYPD6", "KCNJ16", "KCNJ1", "MEST", "CLCNKA", "RDH8", "FAM43A", "NEFL", "SLC22A2","CNTD2",  "GAMT", "PPP1R1A",
+                        "IGFBP6", "CCND2", "ENO2", "KLF2", "KLF4", "PDLIM1", "PRDX1", "PRDX4", "PRDX6", "RHOB", "JUN",
+                        "PARP14", "STAT1", "IRF1", "SOCS3", "EDN1", "CEBPD", "F3", "NFKBIZ", "TPM1", "RELB", "LIF", "HBEGF", "ETS1", "FOSL2", "PDGFB",
+                        "FLNA", "FSTL1", "PMEPA1", "ATF3", "SPP1", "MMP7"))
+
+tal_m3 <- c("F3", "NFKBIZ", "TPM1", "RELB", "LIF", "HBEGF", "ETS1", "FOSL2", "PDGFB",
+            "FLNA", "FSTL1", "PMEPA1", "ATF3", "SPP1", "MMP7")
+tal_m2 <- c("SOCS3", "EDN1", "CEBPD")
+tal_m1 <- c("PARP14", "STAT1", "IRF1")
 
 avg_exp_tal <- AverageExpression(
-  TAL_human_KTX_subclustering, 
+  Ktx_TAL_human_subclustering, 
   features = gene_order_tal, 
   group.by = "celltype_to_plot", 
   assays = "RNA", 
-  slot = "data"  
+  slot = "data"
 )
 
 avg_exp_matrix_tal <- avg_exp_tal$RNA[gene_order_tal, desired_order_tal]
-
 avg_exp_matrix_tal_norm <- t(apply(avg_exp_matrix_tal, 1, function(x) x / max(x, na.rm = TRUE)))
+
+row_labels_tal <- sapply(rownames(avg_exp_matrix_tal_norm), function(g) {
+  if (g %in% tal_m3) return(paste0(g, " (m3)"))
+  if (g %in% tal_m2) return(paste0(g, " (m2)"))
+  if (g %in% tal_m1) return(paste0(g, " (m1)"))
+  return(g)
+})
 
 pheatmap(
   avg_exp_matrix_tal_norm,
   cluster_rows = FALSE,
   cluster_cols = FALSE,
-  show_rownames = TRUE,
+  labels_row = row_labels_tal,
   show_colnames = TRUE,
+  show_rownames = TRUE,
   scale = "none",
   breaks = seq(0, 1, length.out = 101),
   color = colorRampPalette(c("black", "yellow"))(100),
@@ -368,7 +426,7 @@ pheatmap(
 )
 
 
-#Figure 5G
+#Figure 6G
 library(Seurat)
 library(dplyr)
 library(ggplot2)
@@ -377,7 +435,7 @@ desired_order <- c('cTAL1', 'cTAL2', 'cTAL3', 'cTAL4',
                    'mTAL1', 'mTAL2', 'mTAL3', 
                    'TAL_Injury_h1', 'TAL_Injury_h2')
 
-df_tal <- TAL_human_KTX_subclustering@meta.data %>%
+df_tal <- Ktx_TAL_mouse_subclustering@meta.data %>%
   group_by(sample, celltype_level_2) %>%
   summarise(count = n(), .groups = 'drop') %>%
   ungroup() %>%
@@ -422,66 +480,53 @@ ggplot(df_tal, aes(x = celltype_level_2, y = percent, fill = sample)) +
 
 
 
-#Figure 5H Correlation heatmap
-Idents(TAL_human_KTX_subclustering) <- "celltype_to_plot"  
-Idents(Ktx_TAL_mouse_subclustering) <- "celltype_to_plot" 
+#Figure 6H 
+Ktx_TAL_mouse_subclustering <- readRDS(".../Ktx_TAL_mouse_subclustering.rds")
+Ktx_TAL_human_subclustering <- readRDS(".../Human/Ktx_TAL_human_subclustering.rds")
 
-TAL_marker <- FindAllMarkers(
-  Ktx_TAL_mouse_subclustering, 
-  only.pos = TRUE, 
-  logfc.threshold = 1
+gene_map <- getLDS(
+  attributes = c("mgi_symbol"),
+  filters = "mgi_symbol",
+  values = rownames(Ktx_TAL_mouse_subclustering),
+  mart = mouse_mart,
+  attributesL = c("hgnc_symbol"),
+  martL = human_mart,
+  uniqueRows = TRUE
 )
-TAL_marker <- TAL_marker %>%
-  filter(p_val_adj < 0.05, pct.1 > 0.1)
+gene_map <- gene_map[!duplicated(gene_map[, 2]), ]
+colnames(gene_map) <- c("mouse_gene", "human_gene")
 
-all_TAL_genes <- unique(TAL_marker$gene)
+mouse_expr <- GetAssayData(Ktx_TAL_mouse_subclustering, slot = "data")
+mouse_expr <- mouse_expr[gene_map$mouse_gene, ]
+rownames(mouse_expr) <- gene_map$human_gene
 
-gene_mapping_TAL <- convertMouseGeneList(all_TAL_genes)
+human_expr <- GetAssayData(Ktx_TAL_human_subclustering, slot = "data")
+common_genes <- intersect(rownames(mouse_expr), rownames(human_expr))
+mouse_expr <- mouse_expr[common_genes, ]
+human_expr <- human_expr[common_genes, ]
 
-gene_mapping_TAL <- gene_mapping_TAL[!duplicated(gene_mapping_TAL$MGI.symbol),]
-gene_mapping_TAL <- gene_mapping_TAL[!duplicated(gene_mapping_TAL$HGNC.symbol),]
+colnames(human_expr) <- make.unique(colnames(human_expr))
+colnames(Ktx_TAL_human_subclustering) <- make.unique(colnames(Ktx_TAL_human_subclustering))
 
-mouse_genes_to_scale <- gene_mapping_TAL$MGI.symbol
-human_genes_to_scale <- gene_mapping_TAL$HGNC.symbol
+ref_labels_human <- Ktx_TAL_human_subclustering@meta.data[colnames(human_expr), "celltype_level_2"]
 
-Ktx_TAL_mouse_subclustering <- ScaleData(Ktx_TAL_mouse_subclustering, features = mouse_genes_to_scale)
-TAL_human_KTX_subclustering <- ScaleData(TAL_human_KTX_subclustering, features = human_genes_to_scale)
+singleR_results_TAL <- SingleR(test = as.matrix(mouse_expr),
+                               ref = as.matrix(human_expr),
+                               labels = ref_labels_human)
 
-mouse_agg_TAL <- AverageExpression(
-  Ktx_TAL_mouse_subclustering, 
-  assays = "RNA", 
-  features = mouse_genes_to_scale, 
-  group.by = "celltype_to_plot", 
-  slot = "scale.data"
-)
-human_agg_TAL <- AverageExpression(
-  TAL_human_KTX_subclustering, 
-  assays = "RNA", 
-  features = human_genes_to_scale, 
-  group.by = "celltype_to_plot",  
-  slot = "scale.data"
-)
+Ktx_TAL_mouse_subclustering$SingleR.labels.human_pruned <- singleR_results_TAL$pruned.labels
 
-gene_mapping_filtered_TAL <- gene_mapping_TAL[gene_mapping_TAL$MGI.symbol %in% rownames(mouse_agg_TAL[["RNA"]]) & 
-                                                gene_mapping_TAL$HGNC.symbol %in% rownames(human_agg_TAL[["RNA"]]), ]
+confusion_TAL <- Ktx_TAL_mouse_subclustering@meta.data %>%
+  filter(!is.na(SingleR.labels.human)) %>%
+  count(celltype_level_2, SingleR.labels.human) %>%
+  pivot_wider(names_from = SingleR.labels.human, values_from = n, values_fill = 0) %>%
+  column_to_rownames("celltype_level_2") %>%
+  as.matrix()
 
-mouse_exp_TAL <- as.matrix(mouse_agg_TAL[["RNA"]][gene_mapping_filtered_TAL$MGI.symbol, ])
-human_exp_TAL <- as.matrix(human_agg_TAL[["RNA"]][gene_mapping_filtered_TAL$HGNC.symbol, ])
+prop_TAL_inverse <- prop.table(confusion_TAL, margin = 2)
 
-cor_matrix_TAL <- cor(mouse_exp_TAL, human_exp_TAL, method = "spearman")
-
-
-breaks_TAL = seq(0, 0.4, by = 0.02)
-
-pheatmap(
-  cor_matrix_TAL, 
-  cluster_rows = TRUE, 
-  cluster_cols = TRUE, 
-  display_numbers = FALSE, 
-  color = colorRampPalette(c("white", "firebrick3"))(length(breaks_TAL) - 1),  # Diverging palette with white at 0
-  breaks = breaks_TAL, 
-  legend = TRUE, 
-  fontsize = 12,  
-  fontsize_row = 12,  
-  fontsize_col = 12   
-)
+pheatmap(prop_TAL_inverse,
+         cluster_rows = FALSE, cluster_cols = FALSE,
+         color = colorRampPalette(c("white", "firebrick3"))(100),
+         fontsize_row = 10, fontsize_col = 8, angle_col = 45,
+         main = "Human → Maus Mapping (TAL)")
