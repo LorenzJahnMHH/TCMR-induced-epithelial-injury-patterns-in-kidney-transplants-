@@ -10,24 +10,22 @@ library(tidyr)
 library(ComplexHeatmap)
 library(circlize)
 
-setwd("D:/R_Ordner/KTx Daten")
-Ktx_data <- readRDS("Ktx_data.rds")
+Ktx_data_mouse_mouse <- readRDS(".../Ktx_data_mouse_mouse.rds") 
 
-setwd("D:/R_Ordner/Ktx Daten/Blck6_Balbc_DGE_lists")
+setwd(".../Blck6_Balbc_DGE_lists")
 
+# DGE analysis
 cell_types <- c("Podo", "PT", "tL", "TAL", "DCT", "CNT", "CD-PC", "CD-IC-A", "CD-IC-B", "EC", "IntC", "Uro", "PEC", "Leuko")
-
 Balbc_Allo_marker <- list()
 Balbc_up_Allo_vs_Syn <- list()
 Balbc_down_Allo_vs_Syn <- list()
-
 Blck6_Allo_marker <- list()
 Blck6_up_Allo_vs_Syn <- list()
 Blck6_down_Allo_vs_Syn <- list()
 
 for (cell_type in cell_types) {
   
-  ktx_cells <- subset(Ktx_data, subset = celltype_level_1 == cell_type)
+  ktx_cells <- subset(Ktx_data_mouse_mouse, subset = celltype_level_1 == cell_type)
   
   DefaultAssay(ktx_cells) <- "RNA"
   Idents(ktx_cells) <- "groupID"
@@ -195,163 +193,8 @@ ggplot(downregulated_data, aes(x = Cell_Type, y = Count, fill = Strain)) +
   ylim(0, max(downregulated_data$Count) * 1.1)
 
 
-# Figure 2B
-setwd("D:/R_Ordner/Ktx Daten/Blck6_Balbc_DGE_lists")
-# .../Blck6_Balbc_DGE_lists/
 
-
-library(Seurat)
-library(tidyverse)
-library(pheatmap)
-
-Balbc_up_Allo_vs_Syn <- readRDS("Balbc_up_Allo_vs_Syn.rds")
-Balbc_down_Allo_vs_Syn <- readRDS("Balbc_down_Allo_vs_Syn.rds")
-Blck6_up_Allo_vs_Syn <- readRDS("Blck6_up_Allo_vs_Syn.rds")
-Blck6_down_Allo_vs_Syn <- readRDS("Blck6_down_Allo_vs_Syn.rds")
-
-remove_celltype <- "Leuko"
-Balbc_up_Allo_vs_Syn <- Balbc_up_Allo_vs_Syn[!names(Balbc_up_Allo_vs_Syn) %in% remove_celltype]
-Balbc_down_Allo_vs_Syn <- Balbc_down_Allo_vs_Syn[!names(Balbc_down_Allo_vs_Syn) %in% remove_celltype]
-Blck6_up_Allo_vs_Syn <- Blck6_up_Allo_vs_Syn[!names(Blck6_up_Allo_vs_Syn) %in% remove_celltype]
-Blck6_down_Allo_vs_Syn <- Blck6_down_Allo_vs_Syn[!names(Blck6_down_Allo_vs_Syn) %in% remove_celltype]
-
-unique_genes_up <- sort(unique(c(
-  unlist(lapply(Blck6_up_Allo_vs_Syn, rownames)), 
-  unlist(lapply(Balbc_up_Allo_vs_Syn, rownames))
-)))
-
-unique_genes_down <- sort(unique(c(
-  unlist(lapply(Blck6_down_Allo_vs_Syn, rownames)), 
-  unlist(lapply(Balbc_down_Allo_vs_Syn, rownames))
-)))
-
-integrated_matrix_up <- data.frame(gene = unique_genes_up)
-integrated_matrix_down <- data.frame(gene = unique_genes_down)
-
-for (cell_type in names(Blck6_up_Allo_vs_Syn)) {
-  integrated_matrix_up[paste0("Up_", cell_type, "_Blck6")] <- NA
-  integrated_matrix_down[paste0("Down_", cell_type, "_Blck6")] <- NA
-  integrated_matrix_up[paste0("Up_", cell_type, "_Balbc")] <- NA
-  integrated_matrix_down[paste0("Down_", cell_type, "_Balbc")] <- NA
-}
-
-for (cell_type in names(Blck6_up_Allo_vs_Syn)) {
-  if (nrow(Blck6_up_Allo_vs_Syn[[cell_type]]) > 0) {
-    match_idx <- match(rownames(Blck6_up_Allo_vs_Syn[[cell_type]]), integrated_matrix_up$gene)
-    valid_idx <- !is.na(match_idx)
-    integrated_matrix_up[match_idx[valid_idx], paste0("Up_", cell_type, "_Blck6")] <- Blck6_up_Allo_vs_Syn[[cell_type]]$avg_log2FC[valid_idx]
-  }
-  if (nrow(Blck6_down_Allo_vs_Syn[[cell_type]]) > 0) {
-    match_idx <- match(rownames(Blck6_down_Allo_vs_Syn[[cell_type]]), integrated_matrix_down$gene)
-    valid_idx <- !is.na(match_idx)
-    integrated_matrix_down[match_idx[valid_idx], paste0("Down_", cell_type, "_Blck6")] <- Blck6_down_Allo_vs_Syn[[cell_type]]$avg_log2FC[valid_idx]
-  }
-}
-
-for (cell_type in names(Balbc_up_Allo_vs_Syn)) {
-  if (nrow(Balbc_up_Allo_vs_Syn[[cell_type]]) > 0) {
-    match_idx <- match(rownames(Balbc_up_Allo_vs_Syn[[cell_type]]), integrated_matrix_up$gene)
-    valid_idx <- !is.na(match_idx)
-    integrated_matrix_up[match_idx[valid_idx], paste0("Up_", cell_type, "_Balbc")] <- Balbc_up_Allo_vs_Syn[[cell_type]]$avg_log2FC[valid_idx]
-  }
-  if (nrow(Balbc_down_Allo_vs_Syn[[cell_type]]) > 0) {
-    match_idx <- match(rownames(Balbc_down_Allo_vs_Syn[[cell_type]]), integrated_matrix_down$gene)
-    valid_idx <- !is.na(match_idx)
-    integrated_matrix_down[match_idx[valid_idx], paste0("Down_", cell_type, "_Balbc")] <- Balbc_down_Allo_vs_Syn[[cell_type]]$avg_log2FC[valid_idx]
-  }
-}
-
-integrated_matrix_up[is.na(integrated_matrix_up)] <- 0
-integrated_matrix_down[is.na(integrated_matrix_down)] <- 0
-
-rownames(integrated_matrix_up) <- integrated_matrix_up$gene
-integrated_matrix_up$gene <- NULL
-
-rownames(integrated_matrix_down) <- integrated_matrix_down$gene
-integrated_matrix_down$gene <- NULL
-
-quantile_up <- quantile(as.numeric(integrated_matrix_up[integrated_matrix_up > 0]), probs = 0.7, na.rm = TRUE)
-quantile_down <- quantile(as.numeric(integrated_matrix_down[integrated_matrix_down < 0]), probs = 0.3, na.rm = TRUE)
-
-
-
-breaks_up <- seq(0, quantile_up, length.out = 256)
-color_palette_up <- colorRampPalette(c("beige", "darkorange"))(255)
-
-breaks_down <- seq(quantile_down, 0, length.out = 256)
-color_palette_down <- colorRampPalette(c("royalblue", "beige"))(255)
-
-
-column_order_up <- c()
-column_order_down <- c()
-
-for (cell_type in names(Blck6_up_Allo_vs_Syn)) {
-  column_order_up <- c(column_order_up, paste0("Up_", cell_type, "_Balbc"), paste0("Up_", cell_type, "_Blck6"))
-}
-
-for (cell_type in names(Blck6_down_Allo_vs_Syn)) {
-  column_order_down <- c(column_order_down, paste0("Down_", cell_type, "_Balbc"), paste0("Down_", cell_type, "_Blck6"))
-}
-
-cell_types <- c("Podo", "PT", "tL", "TAL", "DCT", "CNT", "CD-PC", "CD-IC-A", "CD-IC-B", "EC", "IntC", "Uro", "PEC")
-cell_type_labels_up <- cell_types 
-cell_type_labels_down <- cell_types  
-
-pheatmap(
-  integrated_matrix_up[, column_order_up, drop = FALSE],
-  scale = "none",
-  clustering_distance_rows = "correlation", 
-  cluster_cols = FALSE,
-  color = color_palette_up,
-  na_col = "white",
-  breaks = breaks_up,
-  show_rownames = TRUE, # Zeige die Gen-Namen
-  show_colnames = TRUE,
-  labels_col = cell_type_labels_up
-)
-
-pheatmap(
-  integrated_matrix_down[, column_order_down, drop = FALSE],
-  scale = "none",
-  clustering_distance_rows = "correlation", 
-  cluster_cols = FALSE,
-  color = color_palette_down,
-  na_col = "white",
-  breaks = breaks_down,
-  show_rownames = TRUE, # Zeige die Gen-Namen
-  show_colnames = TRUE,
-  labels_col = cell_type_labels_down
-)
-
-pheatmap(
-  integrated_matrix_up[, column_order_up, drop = FALSE],
-  scale = "none",
-  clustering_distance_rows = "correlation", 
-  cluster_cols = FALSE,
-  color = color_palette_up,
-  na_col = "white",
-  breaks = breaks_up,
-  show_rownames = FALSE, # Verstecke die Gen-Namen
-  show_colnames = FALSE,
-  labels_col = NULL,
-  legend = FALSE
-)
-
-pheatmap(
-  integrated_matrix_down[, column_order_down, drop = FALSE],
-  scale = "none",
-  clustering_distance_rows = "correlation", 
-  cluster_cols = FALSE,
-  color = color_palette_down,
-  na_col = "white",
-  breaks = breaks_down,
-  show_rownames = FALSE, # Verstecke die Gen-Namen
-  show_colnames = FALSE,
-  labels_col = NULL,
-  legend = FALSE
-)
-
-# Fig 2C
+# Fig 2F
 # "_pathways_raw.txt"- files were generated by computing DGE gene overlaps with Hallmark database on https://maayanlab.cloud/Enrichr/ with the DGE genes showed in Fig 2A
 #example name of a resulting txt. file: "Blck6_PT_pathways_raw.txt"
 
@@ -446,4 +289,5 @@ dotplot_sorted_reversed <- ggplot(filtered_top_data, aes(x = Strain,
   facet_grid(~CellType, scales = "free_x", space = "free_x")
 
 print(dotplot_sorted_reversed)
+
 
