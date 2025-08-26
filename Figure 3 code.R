@@ -32,6 +32,8 @@ DimPlot(
   theme(legend.position = "none")
 dev.off()
 
+#for Figure 3A PAGA PT and TAL see the PT.PAGA.ipynb and TAL.PAGA.ipynb
+
 #Figure 3C Heatmap
 desired_order <- c("PT S1", "PT S2", "PT S3", "PT S3 med.", 
                    "PT prolif", "PT Injury m1", "PT Injury m2", 
@@ -375,5 +377,6 @@ ttest_results_tal <- df_tal_complete %>%
   ungroup()
 
 print(ttest_results_tal, n = Inf)
+
 
 
