@@ -1,0 +1,507 @@
+library(Seurat)
+library(dplyr)
+
+# data read in and clustering for cell type annotation
+# read in data and create Seurat object for each sample using:
+# CreateSeuratObject with nFeature_RNA > 1000 & nFeature_RNA < 7500 & nCount_RNA < 20000 & percent.mt < 5
+# merge all samples in Ktx_data 
+
+Ktx_data <- SplitObject(Ktx_data, split.by = "orig.ident")
+
+Ktx_data <- lapply(X = Ktx_data, FUN = function(x) {
+  x <- NormalizeData(x, normalization.method = "LogNormalize", scale.factor = 10000)
+  x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 2000)
+})
+Ktx_data <- FindIntegrationAnchors(object.list = Ktx_data, dims = 1:30, k.anchor = 5, verbose = TRUE)
+Ktx_data <- IntegrateData(anchorset = Ktx_data, dims = 1:30, verbose = TRUE)
+
+DefaultAssay(Ktx_data) <- "integrated"
+
+Ktx_data <- ScaleData(Ktx_data, verbose = TRUE)
+Ktx_data <- RunPCA(Ktx_data, npcs = 30, verbose = TRUE)
+
+Ktx_data <- RunUMAP(Ktx_data, reduction = "pca", dims = 1:30, verbose = TRUE)
+Ktx_data <- FindNeighbors(Ktx_data, reduction = "pca", dims = 1:30, verbose = TRUE)
+Ktx_data <- FindClusters(Ktx_data, resolution = 0.5, verbose = TRUE)
+# continue with cell type annotation based on marker gene expression
+
+# PT subclustering mouse 
+PT_cells <- subset(Ktx_data, subset = celltype_level_1 == "PT")
+obj.list <- SplitObject(PT_cells, split.by = "ID")
+
+for(i in 1:length(obj.list)){
+  
+  DefaultAssay(obj.list[[i]]) <- "RNA"
+  obj.list[[i]] <- NormalizeData(object = obj.list[[i]])
+  obj.list[[i]] <- FindVariableFeatures(object = obj.list[[i]])
+  
+}
+
+features <- SelectIntegrationFeatures(object.list = obj.list)
+seurat.anchors <- FindIntegrationAnchors(object.list = obj.list, anchor.features = features)
+
+Ktx_PT_mouse_subclustering <- IntegrateData(anchorset = seurat.anchors)
+
+
+Ktx_PT_mouse_subclustering <- ScaleData(Ktx_PT_mouse_subclustering, verbose = FALSE)
+Ktx_PT_mouse_subclustering <- RunPCA(Ktx_PT_mouse_subclustering, npcs = 30, verbose = FALSE)
+Ktx_PT_mouse_subclustering <- FindNeighbors(Ktx_PT_mouse_subclustering, reduction = "pca", dims = 1:10)
+Ktx_PT_mouse_subclustering <- FindClusters(Ktx_PT_mouse_subclustering, resolution = 0.5)
+Ktx_PT_mouse_subclustering <- RunUMAP(Ktx_PT_mouse_subclustering, reduction = "pca", dims = 1:10)
+
+
+# TAL subclustering mouse 
+TAL_cells <- subset(Ktx_data, 
+  subset = (celltype_level_1 == "TAL") | (celltype_level_2 == "TAL_Prolif")
+)
+
+
+obj.list <- SplitObject(TAL_cells, split.by = "ID")
+
+for(i in 1:length(obj.list)){
+  
+  DefaultAssay(obj.list[[i]]) <- "RNA"
+  obj.list[[i]] <- NormalizeData(object = obj.list[[i]])
+  obj.list[[i]] <- FindVariableFeatures(object = obj.list[[i]])
+  
+}
+
+features <- SelectIntegrationFeatures(object.list = obj.list)
+seurat.anchors <- FindIntegrationAnchors(object.list = obj.list, anchor.features = features)
+
+Ktx_TAL_mouse_subclustering <- IntegrateData(anchorset = seurat.anchors)
+
+
+Ktx_TAL_mouse_subclustering <- ScaleData(Ktx_TAL_mouse_subclustering, verbose = FALSE)
+Ktx_TAL_mouse_subclustering <- RunPCA(Ktx_TAL_mouse_subclustering, npcs = 30, verbose = FALSE)
+Ktx_TAL_mouse_subclustering <- FindNeighbors(Ktx_TAL_mouse_subclustering, reduction = "pca", dims = 1:10)
+Ktx_TAL_mouse_subclustering <- FindClusters(Ktx_TAL_mouse_subclustering, resolution = 0.5)
+Ktx_TAL_mouse_subclustering <- RunUMAP(Ktx_TAL_mouse_subclustering, reduction = "pca", dims = 1:10)
+
+
+
+
+#DCT
+Prolif_subset <- subset(
+  Ktx_data,
+  subset = celltype_level_1 == "Prolif" & UMAP_1 > 6.5 & UMAP_1 < 10 & UMAP_2 < -10.25) # keep DCT cells from Prolif cluster
+DCT_cells <- subset(Ktx_data, subset = celltype_level_1 == "DCT")
+
+Combined_subset <- merge(DCT_cells, y = Prolif_subset)
+
+
+obj.list <- SplitObject(Combined_subset, split.by = "ID")
+
+for(i in 1:length(obj.list)){
+  
+  DefaultAssay(obj.list[[i]]) <- "RNA"
+  obj.list[[i]] <- NormalizeData(object = obj.list[[i]])
+  obj.list[[i]] <- FindVariableFeatures(object = obj.list[[i]])
+  
+}
+
+features <- SelectIntegrationFeatures(object.list = obj.list)
+seurat.anchors <- FindIntegrationAnchors(object.list = obj.list, anchor.features = features)
+
+Integrated_DCT_mouse <- IntegrateData(anchorset = seurat.anchors)
+Integrated_DCT_mouse <- ScaleData(Integrated_DCT_mouse, verbose = FALSE)
+Integrated_DCT_mouse <- RunPCA(Integrated_DCT_mouse, npcs = 30, verbose = FALSE)
+Integrated_DCT_mouse <- FindNeighbors(Integrated_DCT_mouse, reduction = "pca", dims = 1:10)
+Integrated_DCT_mouse <- FindClusters(Integrated_DCT_mouse, resolution = 0.5)
+Integrated_DCT_mouse <- RunUMAP(Integrated_DCT_mouse, reduction = "pca", dims = 1:10)
+
+#CNT 
+CNT_cells <- subset(Ktx_data, subset = celltype_level_1 == c("CNT"))
+obj.list <- SplitObject(CNT_cells, split.by = "ID")
+
+
+for(i in 1:length(obj.list)){
+  
+  DefaultAssay(obj.list[[i]]) <- "RNA"
+  obj.list[[i]] <- NormalizeData(object = obj.list[[i]])
+  obj.list[[i]] <- FindVariableFeatures(object = obj.list[[i]])
+  
+}
+
+features <- SelectIntegrationFeatures(object.list = obj.list)
+seurat.anchors <- FindIntegrationAnchors(object.list = obj.list, anchor.features = features)
+
+Integrated_CNT_mouse <- IntegrateData(anchorset = seurat.anchors, k.weight = 79)
+
+
+Integrated_CNT_mouse <- ScaleData(Integrated_CNT_mouse, verbose = FALSE)
+Integrated_CNT_mouse <- RunPCA(Integrated_CNT_mouse, npcs = 30, verbose = FALSE)
+Integrated_CNT_mouse <- FindNeighbors(Integrated_CNT_mouse, reduction = "pca", dims = 1:10)
+Integrated_CNT_mouse <- FindClusters(Integrated_CNT_mouse, resolution = 0.5)
+Integrated_CNT_mouse <- RunUMAP(Integrated_CNT_mouse, reduction = "pca", dims = 1:10)
+# exclude doublet Cluster 5 
+Integrated_CNT_mouse <- subset(Integrated_CNT_mouse, subset = seurat_clusters == "5", invert = T)
+
+obj.list <- SplitObject(Integrated_CNT_mouse, split.by = "ID")
+
+
+for(i in 1:length(obj.list)){
+  
+  DefaultAssay(obj.list[[i]]) <- "RNA"
+  obj.list[[i]] <- NormalizeData(object = obj.list[[i]])
+  obj.list[[i]] <- FindVariableFeatures(object = obj.list[[i]])
+  
+}
+
+features <- SelectIntegrationFeatures(object.list = obj.list)
+seurat.anchors <- FindIntegrationAnchors(object.list = obj.list, anchor.features = features)
+
+Integrated_CNT_mouse <- IntegrateData(anchorset = seurat.anchors, k.weight = 77)
+
+
+Integrated_CNT_mouse <- ScaleData(Integrated_CNT_mouse, verbose = FALSE)
+Integrated_CNT_mouse <- RunPCA(Integrated_CNT_mouse, npcs = 30, verbose = FALSE)
+Integrated_CNT_mouse <- FindNeighbors(Integrated_CNT_mouse, reduction = "pca", dims = 1:30)
+Integrated_CNT_mouse <- FindClusters(Integrated_CNT_mouse, resolution = 0.5)
+Integrated_CNT_mouse <- RunUMAP(Integrated_CNT_mouse, reduction = "pca", dims = 1:30)
+
+## EC
+EC_cells <- subset(Ktx_data, subset = celltype_level_1 == c("EC"))
+obj.list <- SplitObject(EC_cells, split.by = "ID")
+
+
+for(i in 1:length(obj.list)){
+  
+  DefaultAssay(obj.list[[i]]) <- "RNA"
+  obj.list[[i]] <- NormalizeData(object = obj.list[[i]])
+  obj.list[[i]] <- FindVariableFeatures(object = obj.list[[i]])
+  
+}
+
+features <- SelectIntegrationFeatures(object.list = obj.list)
+seurat.anchors <- FindIntegrationAnchors(object.list = obj.list, anchor.features = features)
+
+Integrated_EC_mouse <- IntegrateData(anchorset = seurat.anchors, k.weight = 33)
+
+
+Integrated_EC_mouse <- ScaleData(Integrated_EC_mouse, verbose = FALSE)
+Integrated_EC_mouse <- RunPCA(Integrated_EC_mouse, npcs = 30, verbose = FALSE)
+Integrated_EC_mouse <- FindNeighbors(Integrated_EC_mouse, reduction = "pca", dims = 1:30)
+Integrated_EC_mouse <- FindClusters(Integrated_EC_mouse, resolution = 0.5)
+Integrated_EC_mouse <- RunUMAP(Integrated_EC_mouse, reduction = "pca", dims = 1:30)
+# exclude doublet Cluster 3 + 7 (isolated doublets) 
+
+#tL
+tL_cells <- subset(Ktx_data, subset = celltype_level_1 == c("tL"))
+obj.list <- SplitObject(tL_cells, split.by = "group")
+
+
+for(i in 1:length(obj.list)){
+  
+  DefaultAssay(obj.list[[i]]) <- "RNA"
+  obj.list[[i]] <- NormalizeData(object = obj.list[[i]])
+  obj.list[[i]] <- FindVariableFeatures(object = obj.list[[i]])
+  
+}
+
+features <- SelectIntegrationFeatures(object.list = obj.list)
+seurat.anchors <- FindIntegrationAnchors(object.list = obj.list, anchor.features = features)
+
+Integrated_tL_mouse <- IntegrateData(anchorset = seurat.anchors)
+
+
+Integrated_tL_mouse <- ScaleData(Integrated_tL_mouse, verbose = FALSE)
+Integrated_tL_mouse <- RunPCA(Integrated_tL_mouse, npcs = 30, verbose = FALSE)
+Integrated_tL_mouse <- FindNeighbors(Integrated_tL_mouse, reduction = "pca", dims = 1:30)
+Integrated_tL_mouse <- FindClusters(Integrated_tL_mouse, resolution = 0.5)
+Integrated_tL_mouse <- RunUMAP(Integrated_tL_mouse, reduction = "pca", dims = 1:30)
+
+# exclude doublet Cluster 5 + 6 
+Integrated_tL_mouse <- subset(Integrated_tL_mouse, subset = seurat_clusters %in%  c("5", "6"), invert = T)
+
+obj.list <- SplitObject(Integrated_tL_mouse, split.by = "group")
+
+
+for(i in 1:length(obj.list)){
+  
+  DefaultAssay(obj.list[[i]]) <- "RNA"
+  obj.list[[i]] <- NormalizeData(object = obj.list[[i]])
+  obj.list[[i]] <- FindVariableFeatures(object = obj.list[[i]])
+  
+}
+
+features <- SelectIntegrationFeatures(object.list = obj.list)
+seurat.anchors <- FindIntegrationAnchors(object.list = obj.list, anchor.features = features)
+
+Integrated_tL_mouse <- IntegrateData(anchorset = seurat.anchors)
+
+
+Integrated_tL_mouse <- ScaleData(Integrated_tL_mouse, verbose = FALSE)
+Integrated_tL_mouse <- RunPCA(Integrated_tL_mouse, npcs = 30, verbose = FALSE)
+Integrated_tL_mouse <- FindNeighbors(Integrated_tL_mouse, reduction = "pca", dims = 1:30)
+Integrated_tL_mouse <- FindClusters(Integrated_tL_mouse, resolution = 0.5)
+Integrated_tL_mouse <- RunUMAP(Integrated_tL_mouse, reduction = "pca", dims = 1:30)
+
+#IntC
+IntC_cells <- subset(Ktx_data, subset = celltype_level_1 == c("IntC"))
+obj.list <- SplitObject(IntC_cells, split.by = "group") 
+
+
+for(i in 1:length(obj.list)){
+  
+  DefaultAssay(obj.list[[i]]) <- "RNA"
+  obj.list[[i]] <- NormalizeData(object = obj.list[[i]])
+  obj.list[[i]] <- FindVariableFeatures(object = obj.list[[i]])
+  
+}
+
+features <- SelectIntegrationFeatures(object.list = obj.list)
+seurat.anchors <- FindIntegrationAnchors(object.list = obj.list, anchor.features = features)
+
+Integrated_IntC_mouse <- IntegrateData(anchorset = seurat.anchors)
+
+
+Integrated_IntC_mouse <- ScaleData(Integrated_IntC_mouse, verbose = FALSE)
+Integrated_IntC_mouse <- RunPCA(Integrated_IntC_mouse, npcs = 30, verbose = FALSE)
+Integrated_IntC_mouse <- FindNeighbors(Integrated_IntC_mouse, reduction = "pca", dims = 1:30)
+Integrated_IntC_mouse <- FindClusters(Integrated_IntC_mouse, resolution = 0.5)
+Integrated_IntC_mouse <- RunUMAP(Integrated_IntC_mouse, reduction = "pca", dims = 1:30)
+
+# exclude doublet Cluster 6 + 7 
+Integrated_IntC_mouse <- subset(Integrated_IntC_mouse, subset = seurat_clusters %in%  c("6", "7"), invert = T)
+
+obj.list <- SplitObject(Integrated_IntC_mouse, split.by = "group") 
+
+
+for(i in 1:length(obj.list)){
+  
+  DefaultAssay(obj.list[[i]]) <- "RNA"
+  obj.list[[i]] <- NormalizeData(object = obj.list[[i]])
+  obj.list[[i]] <- FindVariableFeatures(object = obj.list[[i]])
+  
+}
+
+features <- SelectIntegrationFeatures(object.list = obj.list)
+seurat.anchors <- FindIntegrationAnchors(object.list = obj.list, anchor.features = features)
+
+Integrated_IntC_mouse <- IntegrateData(anchorset = seurat.anchors)
+
+
+Integrated_IntC_mouse <- ScaleData(Integrated_IntC_mouse, verbose = FALSE)
+Integrated_IntC_mouse <- RunPCA(Integrated_IntC_mouse, npcs = 30, verbose = FALSE)
+Integrated_IntC_mouse <- FindNeighbors(Integrated_IntC_mouse, reduction = "pca", dims = 1:30)
+Integrated_IntC_mouse <- FindClusters(Integrated_IntC_mouse, resolution = 0.5)
+Integrated_IntC_mouse <- RunUMAP(Integrated_IntC_mouse, reduction = "pca", dims = 1:30)
+
+# exclude doublet Cluster 1 
+Integrated_IntC_mouse <- subset(Integrated_IntC_mouse, subset = seurat_clusters == "1", invert = T)
+
+obj.list <- SplitObject(Integrated_IntC_mouse, split.by = "group") 
+
+
+for(i in 1:length(obj.list)){
+  
+  DefaultAssay(obj.list[[i]]) <- "RNA"
+  obj.list[[i]] <- NormalizeData(object = obj.list[[i]])
+  obj.list[[i]] <- FindVariableFeatures(object = obj.list[[i]])
+  
+}
+
+features <- SelectIntegrationFeatures(object.list = obj.list)
+seurat.anchors <- FindIntegrationAnchors(object.list = obj.list, anchor.features = features)
+
+Integrated_IntC_mouse <- IntegrateData(anchorset = seurat.anchors)
+
+
+Integrated_IntC_mouse <- ScaleData(Integrated_IntC_mouse, verbose = FALSE)
+Integrated_IntC_mouse <- RunPCA(Integrated_IntC_mouse, npcs = 30, verbose = FALSE)
+Integrated_IntC_mouse <- FindNeighbors(Integrated_IntC_mouse, reduction = "pca", dims = 1:30)
+Integrated_IntC_mouse <- FindClusters(Integrated_IntC_mouse, resolution = 0.5)
+Integrated_IntC_mouse <- RunUMAP(Integrated_IntC_mouse, reduction = "pca", dims = 1:30)
+
+
+#CD-PC
+PC_cells <- subset(Ktx_data, subset = celltype_level_1 == c("CD-PC"))
+obj.list <- SplitObject(PC_cells, split.by = "groupID")
+
+
+for(i in 1:length(obj.list)){
+  
+  DefaultAssay(obj.list[[i]]) <- "RNA"
+  obj.list[[i]] <- NormalizeData(object = obj.list[[i]])
+  obj.list[[i]] <- FindVariableFeatures(object = obj.list[[i]])
+  
+}
+
+features <- SelectIntegrationFeatures(object.list = obj.list)
+seurat.anchors <- FindIntegrationAnchors(object.list = obj.list, anchor.features = features)
+
+Integrated_PC_mouse <- IntegrateData(anchorset = seurat.anchors, k.weight = 52) 
+
+
+Integrated_PC_mouse <- ScaleData(Integrated_PC_mouse, verbose = FALSE)
+Integrated_PC_mouse <- RunPCA(Integrated_PC_mouse, npcs = 30, verbose = FALSE)
+Integrated_PC_mouse <- FindNeighbors(Integrated_PC_mouse, reduction = "pca", dims = 1:10)
+Integrated_PC_mouse <- FindClusters(Integrated_PC_mouse, resolution = 0.8)  #resolution was increased to precisely remove doublet clusters
+Integrated_PC_mouse <- RunUMAP(Integrated_PC_mouse, reduction = "pca", dims = 1:10)
+
+# exclude doublet Cluster 5 + 6 
+Integrated_PC_mouse <- subset(Integrated_PC_mouse, subset = seurat_clusters %in% c("5", "6"), invert = T)
+
+obj.list <- SplitObject(Integrated_PC_mouse, split.by = "groupID")
+
+
+for(i in 1:length(obj.list)){
+  
+  DefaultAssay(obj.list[[i]]) <- "RNA"
+  obj.list[[i]] <- NormalizeData(object = obj.list[[i]])
+  obj.list[[i]] <- FindVariableFeatures(object = obj.list[[i]])
+  
+}
+
+features <- SelectIntegrationFeatures(object.list = obj.list)
+seurat.anchors <- FindIntegrationAnchors(object.list = obj.list, anchor.features = features)
+
+Integrated_PC_mouse <- IntegrateData(anchorset = seurat.anchors, k.weight = 43) 
+
+
+Integrated_PC_mouse <- ScaleData(Integrated_PC_mouse, verbose = FALSE)
+Integrated_PC_mouse <- RunPCA(Integrated_PC_mouse, npcs = 30, verbose = FALSE)
+Integrated_PC_mouse <- FindNeighbors(Integrated_PC_mouse, reduction = "pca", dims = 1:10)
+Integrated_PC_mouse <- FindClusters(Integrated_PC_mouse, resolution = 0.5) #resolution back to 0.5
+Integrated_PC_mouse <- RunUMAP(Integrated_PC_mouse, reduction = "pca", dims = 1:10)
+
+# CD-IC-A CD-IC-B
+IC_cells <- subset(Ktx_data, subset = celltype_level_1 %in% c("CD-IC-A", "CD-IC-B"))
+obj.list <- SplitObject(IC_cells, split.by = "ID")
+
+
+for(i in 1:length(obj.list)){
+  
+  DefaultAssay(obj.list[[i]]) <- "RNA"
+  obj.list[[i]] <- NormalizeData(object = obj.list[[i]])
+  obj.list[[i]] <- FindVariableFeatures(object = obj.list[[i]])
+  
+}
+
+features <- SelectIntegrationFeatures(object.list = obj.list)
+seurat.anchors <- FindIntegrationAnchors(object.list = obj.list, anchor.features = features)
+
+Integrated_IC_mouse <- IntegrateData(anchorset = seurat.anchors, k.weight = 64) 
+
+
+Integrated_IC_mouse <- ScaleData(Integrated_IC_mouse, verbose = FALSE)
+Integrated_IC_mouse <- RunPCA(Integrated_IC_mouse, npcs = 30, verbose = FALSE)
+Integrated_IC_mouse <- FindNeighbors(Integrated_IC_mouse, reduction = "pca", dims = 1:30)
+Integrated_IC_mouse <- FindClusters(Integrated_IC_mouse, resolution = 0.5)
+Integrated_IC_mouse <- RunUMAP(Integrated_IC_mouse, reduction = "pca", dims = 1:30)
+
+# exclude doublet Cluster 4 + 5 
+Integrated_IC_mouse <- subset(Integrated_IC_mouse, subset = seurat_clusters %in% c("4", "5"), invert = T)
+
+obj.list <- SplitObject(Integrated_IC_mouse, split.by = "ID")
+
+
+for(i in 1:length(obj.list)){
+  
+  DefaultAssay(obj.list[[i]]) <- "RNA"
+  obj.list[[i]] <- NormalizeData(object = obj.list[[i]])
+  obj.list[[i]] <- FindVariableFeatures(object = obj.list[[i]])
+  
+}
+
+features <- SelectIntegrationFeatures(object.list = obj.list)
+seurat.anchors <- FindIntegrationAnchors(object.list = obj.list, anchor.features = features)
+
+Integrated_IC_mouse <- IntegrateData(anchorset = seurat.anchors, k.weight = 60) 
+
+
+Integrated_IC_mouse <- ScaleData(Integrated_IC_mouse, verbose = FALSE)
+Integrated_IC_mouse <- RunPCA(Integrated_IC_mouse, npcs = 30, verbose = FALSE)
+Integrated_IC_mouse <- FindNeighbors(Integrated_IC_mouse, reduction = "pca", dims = 1:30)
+Integrated_IC_mouse <- FindClusters(Integrated_IC_mouse, resolution = 0.5)
+Integrated_IC_mouse <- RunUMAP(Integrated_IC_mouse, reduction = "pca", dims = 1:30)
+DefaultAssay(Integrated_IC_mouse) <- "RNA"
+DimPlot(Integrated_IC_mouse, label = T)
+
+
+#human
+# read in h5 files (*raw*_filtered.h5 files) from human samples after cellbender using Seurat's Read10x_h5 creating a Seurat object with min.features = 500 and merge into Human.samples
+
+obj.list <- SplitObject(Human.samples, split.by = "group")
+
+for(i in 1:length(obj.list)){
+  
+  DefaultAssay(obj.list[[i]]) <- "RNA"
+  obj.list[[i]] <- NormalizeData(object = obj.list[[i]])
+  obj.list[[i]] <- FindVariableFeatures(object = obj.list[[i]])
+  
+}
+
+features <- SelectIntegrationFeatures(object.list = obj.list)
+seurat.anchors <- FindIntegrationAnchors(object.list = obj.list, anchor.features = features)
+
+Ktx_data_human <- IntegrateData(anchorset = seurat.anchors)
+
+
+Ktx_data_human <- ScaleData(Ktx_data_human, verbose = FALSE)
+Ktx_data_human <- RunPCA(Ktx_data_human, npcs = 30, verbose = FALSE)
+
+Ktx_data_human <- harmony::RunHarmony(Ktx_data_human, group.by.vars = c("group"), lambda = 2, tau = 1000, theta = 1, assay.use = "integrated",
+                                                    kmeans_init_nstart = 60, kmeans_init_iter_max=2000,
+                                                    max.iter.harmony = 30)
+
+Ktx_data_human <- ScaleData(Ktx_data_human, verbose = FALSE)
+Ktx_data_human <- FindNeighbors(Ktx_data_human, reduction = "harmony", dims = 1:15)
+Ktx_data_human <- FindClusters(Ktx_data_human, resolution = 0.5)
+Ktx_data_human <- RunUMAP(Ktx_data_human, reduction = "harmony", dims = 1:15)
+
+# Clusters with low nCount_RNA and nFeature_RNA were removed from raw data
+# Removal of doublet clusters from subclusterings with at least 2 other major celltype canonical marker
+# Find the included cells with celltype levels in the metadata sheet available on GEO
+
+# PT subclustering human 
+PT_cells <- subset(Ktx_data_human, subset = celltype_level_1 == c("PT"))
+
+obj.list <- SplitObject(PT_cells, split.by = "sample")
+
+for(i in 1:length(obj.list)){
+  
+  DefaultAssay(obj.list[[i]]) <- "RNA"
+  obj.list[[i]] <- NormalizeData(object = obj.list[[i]])
+  obj.list[[i]] <- FindVariableFeatures(object = obj.list[[i]])
+  
+}
+
+features <- SelectIntegrationFeatures(object.list = obj.list)
+seurat.anchors_human <- FindIntegrationAnchors(object.list = obj.list, anchor.features = features)
+
+Ktx_human_PT_subclustering <- IntegrateData(anchorset = seurat.anchors_human)
+
+
+Ktx_human_PT_subclustering <- ScaleData(Ktx_human_PT_subclustering, verbose = FALSE)
+Ktx_human_PT_subclustering <- RunPCA(Ktx_human_PT_subclustering, npcs = 30, verbose = FALSE)
+Ktx_human_PT_subclustering <- FindNeighbors(Ktx_human_PT_subclustering, reduction = "pca", dims = 1:10)
+Ktx_human_PT_subclustering <- FindClusters(Ktx_human_PT_subclustering, resolution = 0.5)
+Ktx_human_PT_subclustering <- RunUMAP(Ktx_human_PT_subclustering, reduction = "pca", dims = 1:10)
+DimPlot(Ktx_human_PT_subclustering, label = T)
+
+# TAL subclustering human 
+TAL_cells_human <- subset(Ktx_data_human, subset = celltype_level_1 == c("TAL"))
+
+obj.list <- SplitObject(TAL_cells_human, split.by = "sample")
+
+for(i in 1:length(obj.list)){
+  
+  DefaultAssay(obj.list[[i]]) <- "RNA"
+  obj.list[[i]] <- NormalizeData(object = obj.list[[i]])
+  obj.list[[i]] <- FindVariableFeatures(object = obj.list[[i]])
+  
+}
+
+features <- SelectIntegrationFeatures(object.list = obj.list)
+seurat.anchors <- FindIntegrationAnchors(object.list = obj.list, anchor.features = features)
+
+Ktx_human_TAL_subclustering <- IntegrateData(anchorset = seurat.anchors, k.weight = 40)
+
+
+Ktx_human_TAL_subclustering <- ScaleData(Ktx_human_TAL_subclustering, verbose = FALSE)
+Ktx_human_TAL_subclustering <- RunPCA(Ktx_human_TAL_subclustering, npcs = 30, verbose = FALSE)
+Ktx_human_TAL_subclustering <- FindNeighbors(Ktx_human_TAL_subclustering, reduction = "pca", dims = 1:10)
+Ktx_human_TAL_subclustering <- FindClusters(Ktx_human_TAL_subclustering, resolution = 0.5)
+Ktx_human_TAL_subclustering <- RunUMAP(Ktx_human_TAL_subclustering, reduction = "pca", dims = 1:10)
