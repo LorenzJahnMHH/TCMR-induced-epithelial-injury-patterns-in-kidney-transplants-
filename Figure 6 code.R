@@ -351,20 +351,50 @@ singleR_results_PT <- SingleR(test = as.matrix(mouse_expr),
 
 Ktx_PT_mouse_subclustering$SingleR.labels.human <- singleR_results_PT$pruned.labels
 
-confusion_PT <- Ktx_PT_mouse_subclustering@meta.data %>%
-  filter(!is.na(SingleR.labels.human)) %>%
-  count(celltype_level_2_rev, SingleR.labels.human) %>%
-  pivot_wider(names_from = SingleR.labels.human, values_from = n, values_fill = 0) %>%
-  column_to_rownames("celltype_level_2_rev") %>%
-  as.matrix()
+confusion_PT <- with(
+  Ktx_PT_mouse_subclustering@meta.data,
+  table(celltype_level_2_rev, SingleR.labels.human)
+)
 
-prop_PT_inverse <- prop.table(confusion_PT, margin = 2)
+prop_PT_mouse <- prop.table(confusion_PT, margin = 1)
 
-pheatmap(prop_PT_inverse,
-         cluster_rows = FALSE, cluster_cols = FALSE,
-         color = colorRampPalette(c("white", "firebrick3"))(100),
-         fontsize_row = 10, fontsize_col = 8, angle_col = 45,
-         main = "Human → Maus Mapping (PT)")
+pretty_rows <- c(
+  "PT_S1"           = "PT S1",
+  "PT_S1/2"         = "PT S1/2",
+  "PT_S2"           = "PT S2",
+  "PT_S3"           = "PT S3",
+  "PT_S3_medullary" = "PT S3 med.",
+  "PT_prolif"       = "PT prolif",
+  "PT_Injury_m1"    = "PT Injury m1",
+  "PT_Injury_m2"    = "PT Injury m2",
+  "PT_Injury_m3"    = "PT Injury m3",
+  "PT_Injury_m4"    = "PT Injury m4"
+)
+rownames(prop_PT_mouse) <- pretty_rows[rownames(prop_PT_mouse)]
+
+pretty_cols <- c(
+  "PT_S1"           = "PT S1",
+  "PT_S1/2"         = "PT S1/2",
+  "PT_S2"           = "PT S2",
+  "PT_S3"           = "PT S3",
+  "PT_S3_medullary" = "PT S3 med.",
+  "PT_prolif"       = "PT prolif",
+  "PT_Injury_h1"    = "PT Injury h1",
+  "PT_Injury_h2"    = "PT Injury h2"
+)
+colnames(prop_PT_mouse) <- pretty_cols[colnames(prop_PT_mouse)]
+
+pheatmap(
+  prop_PT_mouse,
+  cluster_rows = FALSE,
+  cluster_cols = FALSE,
+  color        = colorRampPalette(c("white", "firebrick3"))(100),
+  fontsize_row = 8,
+  fontsize_col = 8,
+  angle_col    = 45,
+  main         = "Mouse PT clusters mapped to human PT reference"
+)
+
 
 
 #Figure 6F UMAP
@@ -530,3 +560,4 @@ pheatmap(prop_TAL_inverse,
          color = colorRampPalette(c("white", "firebrick3"))(100),
          fontsize_row = 10, fontsize_col = 8, angle_col = 45,
          main = "Human → Maus Mapping (TAL)")
+
