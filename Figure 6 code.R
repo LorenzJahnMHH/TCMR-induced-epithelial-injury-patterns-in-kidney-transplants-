@@ -546,18 +546,69 @@ singleR_results_TAL <- SingleR(test = as.matrix(mouse_expr),
 
 Ktx_TAL_mouse_subclustering$SingleR.labels.human_pruned <- singleR_results_TAL$pruned.labels
 
-confusion_TAL <- Ktx_TAL_mouse_subclustering@meta.data %>%
-  filter(!is.na(SingleR.labels.human)) %>%
-  count(celltype_level_2, SingleR.labels.human) %>%
-  pivot_wider(names_from = SingleR.labels.human, values_from = n, values_fill = 0) %>%
-  column_to_rownames("celltype_level_2") %>%
-  as.matrix()
+confusion_TAL <- with(
+  Ktx_TAL_mouse_subclustering@meta.data,
+  table(celltype_level_2, SingleR.labels.human_pruned)
+)
 
-prop_TAL_inverse <- prop.table(confusion_TAL, margin = 2)
+row_order_tal_mouse <- c(
+  "cTAL1",
+  "cTAL2",
+  "cmTAL1",
+  "cmTAL2",
+  "mTAL1",
+  "mTAL2",
+  "MD",
+  "TAL_Prolif",
+  "TAL_Injury_m1",
+  "TAL_Injury_m2",
+  "TAL_Injury_m3"
+)
 
-pheatmap(prop_TAL_inverse,
-         cluster_rows = FALSE, cluster_cols = FALSE,
-         color = colorRampPalette(c("white", "firebrick3"))(100),
-         fontsize_row = 10, fontsize_col = 8, angle_col = 45,
-         main = "Human → Maus Mapping (TAL)")
+row_keep <- row_order_tal_mouse[row_order_tal_mouse %in% rownames(confusion_TAL)]
+confusion_TAL <- confusion_TAL[row_keep, , drop = FALSE]
+
+pretty_colnames_tal <- c(
+  "cTAL1"         = "cTAL1",
+  "cTAL2"         = "cTAL2",
+  "cTAL3"         = "cTAL3",
+  "cTAL4"         = "cTAL4",
+  "mTAL1"         = "mTAL1",
+  "mTAL2"         = "mTAL2",
+  "mTAL3"         = "mTAL3",
+  "TAL_Injury_h1" = "TAL Injury h1",
+  "TAL_Injury_h2" = "TAL Injury h2"
+)
+
+colnames(confusion_TAL) <- pretty_colnames_tal[colnames(confusion_TAL)]
+
+col_order_human_tal <- c(
+  "cTAL1",
+  "cTAL2",
+  "cTAL3",
+  "cTAL4",
+  "mTAL1",
+  "mTAL2",
+  "mTAL3",
+  "TAL Injury h1",
+  "TAL Injury h2"
+)
+
+col_keep <- col_order_human_tal[col_order_human_tal %in% colnames(confusion_TAL)]
+confusion_TAL <- confusion_TAL[, col_keep, drop = FALSE]
+
+prop_TAL_mouse <- prop.table(confusion_TAL, margin = 1)
+prop_TAL_mouse[is.na(prop_TAL_mouse)] <- 0
+
+pheatmap(
+  prop_TAL_mouse,
+  cluster_rows = FALSE,
+  cluster_cols = FALSE,
+  color        = colorRampPalette(c("white", "firebrick3"))(100),
+  fontsize_row = 10,
+  fontsize_col = 8,
+  angle_col    = 45,
+  main         = "Mouse → Human Mapping (TAL)"
+)
+
 
