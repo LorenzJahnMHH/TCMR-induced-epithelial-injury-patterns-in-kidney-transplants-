@@ -100,6 +100,29 @@ p2 <- ggplot(heatmap_df, aes(x = CellType, y = Gene, fill = Expression)) +
 print(p2)
 
 # Figure 1E
+cells.tmp = rownames(Ktx_data_mouse@meta.data[Ktx_data_mouse@meta.data$celltype_level_1=="PT",])
+Ktx_data_mouse = subset(Ktx_data_mouse, cells = cells.Ktx_data_mouse)
+Idents(Ktx_data_mouse) = "ID_to_plot"
+Ktx_data_mouse = FindVariableFeatures(Ktx_data_mouse)
+genes.tmp = Ktx_data_mouse@assays$RNA@var.features
+tmp2 = AverageExpression(Ktx_data_mouse, assay = "RNA", features = genes.tmp)
+tmp2 = tmp2$RNA
+tmp2 = as.matrix(tmp2)
+sort(colnames(tmp2))
+colnames(tmp2) = gsub("Balbc","BALB/c",colnames(tmp2))
+colnames(tmp2) = gsub("Blck6","C57BL/6",colnames(tmp2))
+
+pca <- prcomp(t(tmp2), center = TRUE,scale = TRUE)
+
+svg(file = ".../pca.svg", 
+    width = 6, height = 5)
+set.seed(0)
+fviz_pca_ind(pca, repel = TRUE,axes=c(1,2),col.ind = "#000000", labelsize=6) +
+  theme(axis.text = element_text(size = 14), text = element_text(size = 18)) +
+  ggtitle("")
+dev.off()
+                             
+# Figure 1F
 df_mouse <- Ktx_data_mouse@meta.data %>%
   group_by(ID_to_plot, celltype_level_1) %>%
   summarise(count = n(), .groups = 'drop') %>%
@@ -171,5 +194,6 @@ leuko_ttest <- df_mouse %>%
   ungroup()
 
 print(leuko_ttest)
+
 
 
